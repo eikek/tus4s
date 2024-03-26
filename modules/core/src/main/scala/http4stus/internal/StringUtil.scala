@@ -39,3 +39,9 @@ private[http4stus] object StringUtil:
       .flatMap(_.traverse(single))
       .left
       .map(err => ParseFailure(s"Invalid value for header $name: $value", err))
+
+  def pair(s: String, sep: Char): Either[String, (String, String)] =
+    s.split(sep).toList match
+      case a :: b :: Nil => Right(a -> b)
+      case a :: Nil      => Right(a -> "")
+      case _             => Left(s"No key-value pair: $s")

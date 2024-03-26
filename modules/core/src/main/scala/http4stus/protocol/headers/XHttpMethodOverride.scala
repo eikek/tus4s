@@ -1,4 +1,4 @@
-package http4stus.headers
+package http4stus.protocol.headers
 
 import org.http4s.Method
 import org.typelevel.ci.CIString

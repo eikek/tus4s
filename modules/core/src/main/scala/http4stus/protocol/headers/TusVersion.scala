@@ -1,4 +1,4 @@
-package http4stus.headers
+package http4stus.protocol.headers
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*

@@ -22,6 +22,7 @@
         ++ (with pkgs; [
           jq
           scala-cli
+          tusc-sh
         ]);
     in {
       formatter = pkgs.alejandra;

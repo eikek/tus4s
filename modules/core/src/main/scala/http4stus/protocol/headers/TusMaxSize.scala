@@ -1,4 +1,4 @@
-package http4stus.headers
+package http4stus.protocol.headers
 
 import http4stus.ByteSize
 import org.http4s.Header

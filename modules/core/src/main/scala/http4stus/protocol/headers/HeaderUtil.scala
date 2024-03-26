@@ -1,4 +1,4 @@
-package http4stus.headers
+package http4stus.protocol.headers
 
 import cats.syntax.all.*
 
@@ -7,7 +7,7 @@ import org.http4s.Header
 import org.http4s.ParseFailure
 import org.typelevel.ci.CIString
 
-private object HeaderUtil:
+private [protocol] object HeaderUtil:
   def byteSizeHeader[A](
       name: CIString,
       f: A => ByteSize,

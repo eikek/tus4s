@@ -7,6 +7,7 @@ import http4stus.internal.StringUtil
 enum Extension:
   case Creation
   case CreationWithUpload
+  case CreationDeferLength
   case Expiration
   case Checksum
   case Termination
