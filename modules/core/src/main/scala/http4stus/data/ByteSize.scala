@@ -47,7 +47,7 @@ object ByteSize:
     val unit: P[Int] = kb | mb
     val ws = P.charsWhile0(_.isWhitespace).void
 
-    val size = (Numbers.nonNegativeIntString.map(_.toLong) ~ (ws *> unit).?).map {
+    val size = (Numbers.nonNegativeIntString.map(_.toLong) ~ (ws.with1 *> unit).?).map {
       case (n, f) =>
         ByteSize.bytes((n * f.getOrElse(1)).toLong)
     }

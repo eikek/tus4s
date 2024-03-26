@@ -1,7 +1,7 @@
 package http4stus
 
-import org.http4s.Request
+import org.http4s.HttpRoutes
 
-final class Endpoint[F[_]]:
-
-  def head(req: Request[F]) = ???
+trait Endpoint[F[_]]:
+  def routes: HttpRoutes[F]
+  def app: HttpApp[F]

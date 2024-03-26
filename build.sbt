@@ -97,7 +97,9 @@ val server = project
   .settings(
     name := "http4s-tus-server",
     description := "Provides tus server routes",
-    libraryDependencies ++= Dependencies.http4sCore
+    libraryDependencies ++=
+      Dependencies.http4sCore ++
+        Dependencies.http4sDsl
   )
   .dependsOn(core)
 

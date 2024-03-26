@@ -7,6 +7,9 @@ final class TusEndpointBuilder[F[_]](
     extensions: Set[Extension] = Set.empty
 ):
   println(core)
+
+  def build: Endpoint[F] = ???
+
   def withCoreProtocol(coreProtocol: CoreProtocol[F]): TusEndpointBuilder[F] =
     TusEndpointBuilder[F](coreProtocol, extensions)
 
