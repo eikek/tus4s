@@ -1,6 +1,6 @@
 package http4stus.protocol.headers
 
-import http4stus.ByteSize
+import http4stus.data.ByteSize
 import org.http4s.Header
 import org.typelevel.ci.CIString
 

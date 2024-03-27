@@ -1,23 +1,34 @@
 package http4stus.server
 
-import http4stus.Endpoint
-import org.http4s.dsl.Http4sDsl
-import org.http4s.HttpRoutes
-import http4stus.data.UploadId
 import cats.effect.Sync
-import org.http4s.HttpApp
+import cats.syntax.all.*
 
-final class TusEndpoint[F[_]: Sync] extends Endpoint[F] with Http4sDsl[F]:
+import http4stus.CoreProtocol
+import http4stus.Endpoint
+import http4stus.data.UploadId
+import org.http4s.HttpApp
+import org.http4s.HttpRoutes
+import org.http4s.headers.`Cache-Control`
+import org.http4s.CacheDirective
+import org.http4s.Header
+
+final class TusEndpoint[F[_]: Sync](core: CoreProtocol[F])
+    extends Endpoint[F]
+    with Http4sTusDsl[F]:
   def routes: HttpRoutes[F] = HttpRoutes.of {
     case HEAD -> Root / UploadId(id) =>
-      // + Upload-Offset
-      // + Upload-Length (if known)
-      // 404 or 410 if not found (no Upload-Offset)
-      // 204 No Content
-      // Cache-Control: no
-      ???
+      core.find(id).flatMap {
+        case Some(upload) =>
+          NoContent
+            .headers(`Cache-Control`(CacheDirective.`no-store`))
+            .withOffset(upload.offset)
+            .withUploadLength(upload.length)
+
+        case None => NotFound()
+      }
 
     case PATCH -> Root / UploadId(id) =>
+
       ???
 
     case POST -> Root / UploadId(id) =>

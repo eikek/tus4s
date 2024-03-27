@@ -1,6 +1,6 @@
 package http4stus
 
-import org.http4s.HttpRoutes
+import org.http4s.*
 
 trait Endpoint[F[_]]:
   def routes: HttpRoutes[F]

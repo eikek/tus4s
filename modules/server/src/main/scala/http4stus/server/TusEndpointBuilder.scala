@@ -1,5 +1,6 @@
 package http4stus
 
+import http4stus.data.Extension
 import http4stus.protocol.*
 
 final class TusEndpointBuilder[F[_]](

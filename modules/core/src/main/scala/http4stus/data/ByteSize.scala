@@ -1,4 +1,4 @@
-package http4stus
+package http4stus.data
 
 import cats.*
 import cats.parse.{Numbers, Parser as P}

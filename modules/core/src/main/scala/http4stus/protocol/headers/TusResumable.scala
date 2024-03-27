@@ -2,7 +2,7 @@ package http4stus.protocol.headers
 
 import cats.syntax.all.*
 
-import http4stus.Version
+import http4stus.data.Version
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.typelevel.ci.CIString

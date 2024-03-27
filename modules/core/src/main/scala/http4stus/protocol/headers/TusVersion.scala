@@ -3,7 +3,7 @@ package http4stus.protocol.headers
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
-import http4stus.Version
+import http4stus.data.Version
 import http4stus.internal.StringUtil
 import org.http4s.Header
 import org.http4s.ParseResult
