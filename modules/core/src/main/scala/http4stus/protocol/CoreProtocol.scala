@@ -1,4 +1,4 @@
-package http4stus
+package http4stus.protocol
 
 import http4stus.data.*
 

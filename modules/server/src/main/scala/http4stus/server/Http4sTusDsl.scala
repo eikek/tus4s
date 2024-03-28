@@ -5,13 +5,19 @@ import cats.syntax.all.*
 
 import http4stus.data.ByteSize
 import http4stus.protocol.headers.*
-import org.http4s.Header
-import org.http4s.Response
+import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import http4stus.data.Extension
 import cats.data.NonEmptyList
+import cats.Applicative
 
 private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
+
+  def requireContentType(req: Request[F], mt: MediaType)(
+      body: => F[Response[F]]
+  )(using F: Applicative[F]): F[Response[F]] =
+    if (req.contentType.exists(ct => mt.satisfies(ct.mediaType))) body
+    else UnsupportedMediaType(s"Content type $mt is required")
 
   extension [F[_]: Monad](self: F[Response[F]])
     def putHeader(h: Option[Header.ToRaw]): F[Response[F]] =
