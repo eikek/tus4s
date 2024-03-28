@@ -14,6 +14,11 @@ final case class TusVersion(versions: NonEmptyList[Version])
 object TusVersion:
   val name: CIString = CIString("Tus-Version")
 
+  def apply(v: Version, vm: Version*): TusVersion =
+    TusVersion(NonEmptyList(v, vm.toList))
+
+  val V1_0_0 = apply(Version.V1_0_0)
+
   given Header[TusVersion, Header.Single] =
     Header.create(
       name,

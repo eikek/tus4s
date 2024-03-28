@@ -12,6 +12,8 @@ final case class TusResumable(version: Version)
 object TusResumable:
   val name: CIString = CIString("Tus-Resumable")
 
+  val V1_0_0 = TusResumable(Version.V1_0_0)
+
   given Header[TusResumable, Header.Single] =
     Header.create(
       name,
