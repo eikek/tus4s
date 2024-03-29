@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import cats.syntax.all.*
 
 import http4stus.data.Extension
+import http4stus.internal.StringUtil
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.typelevel.ci.CIString
@@ -16,15 +17,12 @@ object TusExtension:
   given Header[TusExtension, Header.Single] =
     Header.create(
       name,
-      _.extensions.map(_.name).toList.mkString(", "),
+      _.extensions.flatMap(_.names).toList.mkString(", "),
       s =>
-        s.split(',')
-          .toList
-          .map(_.trim)
-          .traverse(Extension.fromString)
-          .flatMap(list =>
-            NonEmptyList.fromList(list).toRight(s"No value for header $name")
-          )
-          .leftMap(err => ParseFailure(s"Invalid value for header $name: $s", err))
+        StringUtil
+          .commaList(s)
+          .toRight(s"No value for header $name")
+          .flatMap(Extension.fromStrings)
+          .leftMap(err => ParseFailure(s"Invalid value for header $name", err))
           .map(TusExtension.apply)
     )

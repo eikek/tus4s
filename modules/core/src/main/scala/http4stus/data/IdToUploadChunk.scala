@@ -1,12 +1,13 @@
-package http4stus.server
+package http4stus.data
 
-import org.http4s.*
-import org.http4s.headers.`Content-Length`
+import cats.Applicative
+import cats.syntax.all.*
+
 import http4stus.data.*
 import http4stus.protocol.Headers
 import http4stus.protocol.headers.*
-import cats.Applicative
-import cats.syntax.all.*
+import org.http4s.headers.`Content-Length`
+import org.http4s.{Headers => _, *}
 
 type IdToUploadChunk[F[_]] = UploadId => UploadChunk[F]
 

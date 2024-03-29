@@ -1,8 +1,8 @@
-package http4stus.protocol.creation.headers
+package http4stus.protocol.headers
 
-import org.typelevel.ci.CIString
 import org.http4s.Header
 import org.http4s.ParseFailure
+import org.typelevel.ci.CIString
 
 final case class UploadDeferLength private (private val value: Int = 1)
 

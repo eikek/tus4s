@@ -10,6 +10,7 @@ import org.http4s.dsl.Http4sDsl
 import http4stus.data.Extension
 import cats.data.NonEmptyList
 import cats.Applicative
+import http4stus.data.MetadataMap
 
 private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
 
@@ -24,7 +25,9 @@ private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
       self.map(r => h.map(r.putHeaders(_)).getOrElse(r))
 
     def withUploadLength(size: Option[ByteSize]): F[Response[F]] =
-      putHeader(size.map(UploadLength.apply))
+      size
+        .map(s => self.map(_.putHeaders(UploadLength(s))))
+        .getOrElse(self.map(_.putHeaders(UploadDeferLength.value)))
 
     def withOffset(offset: ByteSize): F[Response[F]] =
       self.map(_.putHeaders(UploadOffset(offset)))
@@ -37,3 +40,7 @@ private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
 
     def withTusResumable: F[Response[F]] =
       self.map(_.putHeaders(TusResumable.V1_0_0))
+
+    def withMetadata(meta: MetadataMap): F[Response[F]] =
+      if (meta.isEmpty) self
+      else self.map(_.putHeaders(UploadMetadata(meta)))

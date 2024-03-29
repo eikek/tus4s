@@ -1,11 +1,11 @@
 package http4stus.protocol
 
-import org.http4s.headers.`Content-Type`
-import org.http4s.*
-import org.http4s.implicits.*
 import http4stus.data.ByteSize
-import http4stus.protocol.creation.headers.UploadDeferLength
+import http4stus.protocol.headers.UploadDeferLength
 import http4stus.protocol.headers.UploadLength
+import org.http4s.*
+import org.http4s.headers.`Content-Type`
+import org.http4s.implicits.*
 
 object Headers:
 

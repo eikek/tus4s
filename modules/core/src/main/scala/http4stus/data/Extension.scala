@@ -5,21 +5,18 @@ import cats.data.NonEmptyList
 import http4stus.internal.StringUtil
 
 enum Extension:
-  case Creation
-  case CreationWithUpload
-  case CreationDeferLength
+  case Creation(options: Set[CreationOptions])
   case Expiration
   case Checksum
   case Termination
   case Concatenation
 
-  val name: String = StringUtil.camelToKebab(productPrefix)
+  val names: NonEmptyList[String] = this match
+    case Creation(opts) =>
+      val more = opts.toList.map(_.name)
+      NonEmptyList("creation", more)
+    case _ => NonEmptyList.one(StringUtil.camelToKebab(productPrefix))
 
 object Extension:
-  val all: NonEmptyList[Extension] =
-    NonEmptyList.fromListUnsafe(Extension.values.toList)
-
-  def fromString(s: String): Either[String, Extension] =
-    Extension.values
-      .find(_.name.equalsIgnoreCase(s))
-      .toRight(s"Invalid tus extension name: $s")
+  def fromStrings(str: NonEmptyList[String]): Either[String, NonEmptyList[Extension]] =
+    ???

@@ -1,4 +1,4 @@
-package http4stus.protocol.creation.headers
+package http4stus.protocol.headers
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
@@ -6,7 +6,7 @@ import cats.syntax.all.*
 import http4stus.data.MetadataMap
 import http4stus.data.MetadataMap.Key
 import http4stus.internal.StringUtil
-import http4stus.protocol.creation.headers.UploadMetadata.base64Enc
+import http4stus.protocol.headers.UploadMetadata.base64Enc
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.http4s.ParseResult

@@ -1,14 +1,14 @@
-package http4stus.protocol.creation
+package http4stus.data
 
-import http4stus.data.*
-import org.http4s.*
-import http4stus.protocol.Headers
 import cats.Applicative
-import http4stus.protocol.creation.headers.UploadMetadata
+import cats.data.EitherT
 import cats.syntax.all.*
 import fs2.Stream
+
+import http4stus.protocol.Headers
+import http4stus.protocol.headers.UploadMetadata
+import org.http4s.*
 import org.http4s.headers.`Content-Length`
-import cats.data.EitherT
 
 final case class CreationRequest[F[_]](
     meta: MetadataMap,

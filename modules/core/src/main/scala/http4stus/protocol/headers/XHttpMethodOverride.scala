@@ -1,8 +1,8 @@
 package http4stus.protocol.headers
 
+import org.http4s.Header
 import org.http4s.Method
 import org.typelevel.ci.CIString
-import org.http4s.Header
 
 final case class XHttpMethodOverride(method: Method)
 

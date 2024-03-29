@@ -1,8 +1,10 @@
 package http4stus.data
 
 import java.nio.charset.Charset
-import http4stus.data.MetadataMap.Key
+
 import cats.kernel.Monoid
+
+import http4stus.data.MetadataMap.Key
 import scodec.bits.ByteVector
 
 final case class MetadataMap(data: Map[Key, ByteVector]):
@@ -16,6 +18,8 @@ final case class MetadataMap(data: Map[Key, ByteVector]):
   def remove(key: Key): MetadataMap = MetadataMap(data.removed(key))
 
   def exists(key: Key): Boolean = data.exists(_._1 == key)
+
+  def isEmpty: Boolean = data.isEmpty
 
   def ++(other: MetadataMap): MetadataMap = MetadataMap(data ++ other.data)
 

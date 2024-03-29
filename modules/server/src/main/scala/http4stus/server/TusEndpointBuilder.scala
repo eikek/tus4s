@@ -1,23 +1,25 @@
 package http4stus.server
 
 import http4stus.protocol.*
-import http4stus.protocol.creation.CreationExtension
 import http4stus.Endpoint
+import http4stus.data.ByteSize
+import cats.effect.Sync
+import org.http4s.Uri
 
-final case class TusEndpointBuilder[F[_]](
-    core: CoreProtocol[F],
-    extensionConfig: ExtensionConfig[F]
+final case class TusEndpointBuilder[F[_]: Sync](
+    tus: TusProtocol[F],
+    config: TusConfig[F] = TusConfig[F]()
 ):
-  println(core)
+  def build: Endpoint[F] = TusEndpoint(core, config)
 
-  def build: Endpoint[F] = ???
+  def modify(f: TusConfig[F] => TusConfig[F]): TusEndpointBuilder[F] =
+    copy(config = f(this.config))
 
-  def withCoreProtocol(coreProtocol: CoreProtocol[F]): TusEndpointBuilder[F] =
-    copy(core = coreProtocol)
+  def withBaseUri(uri: Uri): TusEndpointBuilder[F] =
+    modify(_.copy(baseUri = Some(uri)))
 
-  def withCreation(creation: CreationExtension[F]): TusEndpointBuilder[F] =
-    copy(extensionConfig = extensionConfig.withCreation(creation))
+  def withMaxSize(size: ByteSize): TusEndpointBuilder[F] =
+    modify(_.copy(maxSize = Some(size)))
 
-object TusEndpointBuilder:
-  def apply[F[_]](core: CoreProtocol[F]): TusEndpointBuilder[F] =
-    TusEndpointBuilder[F](core, ExtensionConfig[F]())
+  def withTusProtocol(tus: TusProtocol[F]): TusEndpointBuilder[F] =
+    copy(tus = tus)

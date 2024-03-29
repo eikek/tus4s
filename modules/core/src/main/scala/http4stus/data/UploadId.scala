@@ -1,7 +1,10 @@
 package http4stus.data
 
-import cats.effect.Sync
 import java.util.UUID
+
+import cats.effect.Sync
+
+import org.http4s.Uri
 
 opaque type UploadId = String
 
@@ -20,6 +23,9 @@ object UploadId:
 
   def unapply(s: String): Option[UploadId] =
     fromString(s).toOption
+
+  given Uri.Path.SegmentEncoder[UploadId] =
+    Uri.Path.SegmentEncoder.instance(a => Uri.Path.Segment(a))
 
   extension (self: UploadId)
     def value: String = self
