@@ -10,7 +10,7 @@ final case class TusEndpointBuilder[F[_]: Sync](
     tus: TusProtocol[F],
     config: TusConfig[F] = TusConfig[F]()
 ):
-  def build: Endpoint[F] = TusEndpoint(core, config)
+  def build: Endpoint[F] = TusEndpoint(tus, config)
 
   def modify(f: TusConfig[F] => TusConfig[F]): TusEndpointBuilder[F] =
     copy(config = f(this.config))
