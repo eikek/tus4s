@@ -11,6 +11,7 @@ import http4stus.data.Extension
 import cats.data.NonEmptyList
 import cats.Applicative
 import http4stus.data.MetadataMap
+import java.time.Instant
 
 private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
 
@@ -37,6 +38,12 @@ private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
 
     def withExtensions(exts: Set[Extension]): F[Response[F]] =
       putHeader(NonEmptyList.fromList(exts.toList).map(TusExtension.apply))
+        .putHeader(
+          Extension.findChecksum(exts).map(cs => TusChecksumAlgorithm(cs.algorithms))
+        )
+
+    def withExpires(time: Option[Instant]): F[Response[F]] =
+      putHeader(time.map(UploadExpires.apply))
 
     def withTusResumable: F[Response[F]] =
       self.map(_.putHeaders(TusResumable.V1_0_0))

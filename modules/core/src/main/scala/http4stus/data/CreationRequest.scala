@@ -6,7 +6,7 @@ import cats.syntax.all.*
 import fs2.Stream
 
 import http4stus.protocol.Headers
-import http4stus.protocol.headers.UploadMetadata
+import http4stus.protocol.headers.*
 import org.http4s.*
 import org.http4s.headers.`Content-Length`
 
@@ -15,6 +15,8 @@ final case class CreationRequest[F[_]](
     hasContent: Boolean,
     uploadLength: Option[ByteSize],
     contentLength: Option[ByteSize],
+    checksum: Option[UploadChecksum],
+    isPartial: Boolean,
     data: Stream[F, Byte]
 )
 
@@ -29,10 +31,20 @@ object CreationRequest:
       val data = cntLen.map(len => req.body.take(len)).getOrElse(req.body)
       val meta =
         req.headers.get[UploadMetadata].map(_.decoded).getOrElse(MetadataMap.empty)
+      val checksum = req.headers.get[UploadChecksum]
+      val partial = req.headers.get[UploadConcat].exists(_.isPartial)
 
       EitherT.fromEither(
         uploadLen.map(upLen =>
-          CreationRequest(meta, true, upLen, cntLen.map(ByteSize.bytes), data)
+          CreationRequest(
+            meta,
+            true,
+            upLen,
+            cntLen.map(ByteSize.bytes),
+            checksum,
+            partial,
+            data
+          )
         )
       )
     }
@@ -45,7 +57,7 @@ object CreationRequest:
 
       EitherT.fromEither(
         uploadLen.map(ulen =>
-          CreationRequest(meta, false, ulen, Some(ByteSize.zero), Stream.empty)
+          CreationRequest(meta, false, ulen, Some(ByteSize.zero), None, false, Stream.empty)
         )
       )
     }

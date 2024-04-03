@@ -29,11 +29,14 @@ private[http4stus] object StringUtil:
   def commaList(s: String): Option[NonEmptyList[String]] =
     NonEmptyList.fromList(s.split(',').toList.map(_.trim))
 
+  def spaceList(s: String): Option[NonEmptyList[String]] =
+    NonEmptyList.fromList(s.split(' ').toList.map(_.trim))
+
   def commaListHeader[A](
       name: CIString,
       value: String,
       single: String => Either[String, A]
-  ) =
+  ): Either[ParseFailure, NonEmptyList[A]] =
     commaList(value)
       .toRight(s"No value for header $name")
       .flatMap(_.traverse(single))

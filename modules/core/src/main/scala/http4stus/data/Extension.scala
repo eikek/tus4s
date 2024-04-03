@@ -8,7 +8,7 @@ import http4stus.internal.StringUtil
 enum Extension:
   case Creation(options: Set[CreationOptions])
   case Expiration
-  case Checksum
+  case Checksum(algorithms: NonEmptyList[ChecksumAlgorithm])
   case Termination
   case Concatenation
 
@@ -22,13 +22,35 @@ object Extension:
   private val all = Set(
     Creation(Set.empty),
     Expiration,
-    Checksum,
+    Checksum(NonEmptyList.of(ChecksumAlgorithm.Sha1)),
     Termination,
     Concatenation
   )
 
+  @annotation.tailrec
   def findCreation(exts: Set[Extension]): Option[Creation] =
-    ???
+    if (exts.isEmpty) None
+    else
+      exts.head match
+        case c: Extension.Creation => Some(c)
+        case c                     => findCreation(exts - c)
+
+  @annotation.tailrec
+  def findChecksum(exts: Set[Extension]): Option[Checksum] =
+    if (exts.isEmpty) None
+    else
+      exts.head match
+        case c: Extension.Checksum => Some(c)
+        case c                     => findChecksum(exts - c)
+
+  def includesAlgorithm(exts: Set[Extension], algo: ChecksumAlgorithm): Boolean =
+    findChecksum(exts).exists(_.algorithms.toList.contains(algo))
+
+  def hasConcat(exts: Set[Extension]): Boolean =
+    exts.exists(_ == Concatenation)
+
+  def noConcat(exts: Set[Extension]): Boolean =
+    !hasConcat(exts)
 
   def fromStrings(str: NonEmptyList[String]): Either[String, NonEmptyList[Extension]] = {
     def loop(

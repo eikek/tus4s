@@ -21,13 +21,23 @@ object IdToUploadChunk:
       val cntLen = req.headers
         .get[`Content-Length`]
         .map(_.length)
+      val checksum = req.headers.get[UploadChecksum]
+      val partial = req.headers.get[UploadConcat].exists(_.isPartial)
       val data = cntLen.map(len => req.body.take(len)).getOrElse(req.body)
 
       DecodeResult(
         offset
           .map(off =>
             (id: UploadId) =>
-              UploadChunk(id, off.offset, cntLen.map(ByteSize.bytes), uploadLength, data)
+              UploadChunk(
+                id,
+                off.offset,
+                cntLen.map(ByteSize.bytes),
+                uploadLength,
+                checksum,
+                partial,
+                data
+              )
           )
           .pure[F]
       )
