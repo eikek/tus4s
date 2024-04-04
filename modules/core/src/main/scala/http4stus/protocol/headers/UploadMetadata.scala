@@ -6,7 +6,6 @@ import cats.syntax.all.*
 import http4stus.data.MetadataMap
 import http4stus.data.MetadataMap.Key
 import http4stus.internal.StringUtil
-import http4stus.protocol.headers.UploadMetadata.base64Enc
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.http4s.ParseResult
@@ -18,7 +17,7 @@ final case class UploadMetadata(decoded: MetadataMap):
     decoded.data
       .map { case (k, v) =>
         if (v.isEmpty) k.name
-        else s"${k.name} ${base64Enc(v)}"
+        else s"${k.name} ${v.toBase64}"
       }
       .toList
       .mkString(",")
@@ -47,6 +46,6 @@ object UploadMetadata:
       .flatMap(key => base64Dec(v).map(value => key -> value))
       .leftMap(ParseFailure(s"Cannot decode ($k, $v) pair", _))
 
-  private def base64Enc(v: ByteVector): String = v.toBase64
   private def base64Dec(s: String): Either[String, ByteVector] =
-    ByteVector.fromBase64Descriptive(s)
+    if (s.isEmpty()) Right(ByteVector.empty)
+    else ByteVector.fromBase64Descriptive(s)

@@ -26,16 +26,20 @@ final case class MetadataMap(data: Map[Key, ByteVector]):
 object MetadataMap:
   val empty: MetadataMap = MetadataMap(Map.empty)
 
+  def apply(items: (Key, ByteVector)*): MetadataMap =
+    MetadataMap(items.toMap)
+
   given Monoid[MetadataMap] = Monoid.instance(empty, _ ++ _)
 
   opaque type Key = String
   object Key:
-    private val ascii = Charset.forName("ASCII").newEncoder()
+    // newEncoder is stateful
+    private def ascii = Charset.forName("ASCII").newEncoder()
     private val invalidChar: Char => Boolean = c => c.isWhitespace || c == ','
 
     def fromString(key: String): Either[String, Key] =
       if (key.isEmpty || key.exists(invalidChar))
-        Left(s"Invalid $name key name (no spaces, commas, not empty): $key")
+        Left(s"Invalid key name (no spaces, commas, not empty): $key")
       else if (ascii.canEncode(key)) Right(key)
       else Left(s"Key names for $name must be ascii only: $key")
 

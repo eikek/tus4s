@@ -61,7 +61,7 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], config: TusConfig[F])
               BadRequest(s"Concatenation and partial chunks not supported")
             )
 
-            resp <- (fail1 <+> fail2 <+> fail3).fold(tus.create(input).flatMap {
+            resp <- (fail1 <+> fail2 <+> fail3).getOrElse(tus.create(input).flatMap {
               case CreationResult.Success(id, offset, expires) =>
                 val base = config.baseUri.getOrElse(uri"")
                 Created
@@ -69,8 +69,7 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], config: TusConfig[F])
                   .withOffset(offset)
                   .withExpires(expires)
                   .withTusResumable
-            })(identity)
-
+            })
           } yield resp
         case None =>
           NotFound()
