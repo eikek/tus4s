@@ -1,5 +1,6 @@
 package http4stus.data
 
+import cats.Show
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
@@ -19,6 +20,10 @@ enum Extension:
     case _ => NonEmptyList.one(StringUtil.camelToKebab(productPrefix))
 
 object Extension:
+  given Show[Extension] = Show.show { ext =>
+    ext.names.toList.mkString(",")
+  }
+
   private val all = Set(
     Creation(Set.empty),
     Expiration,

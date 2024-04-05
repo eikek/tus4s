@@ -26,3 +26,27 @@ object ConcatType:
           case Some(nel) =>
             nel.traverse(Uri.fromString).map(Final.apply)
     }
+
+  extension (self: Final)
+    /** Extracts upload ids from the given uris. It uses the last segment of the uri path.
+      * If a base-uri is specified, each url is checked whether both authorities match.
+      */
+    def resolveToId(baseUri: Option[Uri]): Either[String, NonEmptyList[UploadId]] =
+      def toId(uri: Uri) =
+        uri.path.segments.lastOption
+          .map(_.decoded())
+          .toList
+          .traverse(UploadId.fromString)
+
+      def isDescendent(uri: Uri): Boolean =
+        baseUri.exists(base =>
+          uri.authority == base.authority && uri.path.startsWith(base.path)
+        )
+
+      self.partials.toList
+        .flatTraverse { uri =>
+          if (!isDescendent(uri))
+            Left(s"Partial url not valid for this endpoint: ${uri.renderString}")
+          else toId(uri)
+        }
+        .flatMap(ids => NonEmptyList.fromList(ids).toRight(s"No upload ids available"))
