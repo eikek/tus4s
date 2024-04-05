@@ -1,7 +1,7 @@
 package http4stus.data
 
+import http4stus.data.MetadataMap.Key
 import munit.*
-import MetadataMap.Key
 import scodec.bits.ByteVector
 
 class MetadataMapTest extends FunSuite:
@@ -24,5 +24,8 @@ class MetadataMapTest extends FunSuite:
     assert(!m.exists(key1))
 
   test("get value"):
-    val m = MetadataMap(key2 -> ByteVector.empty, key1 -> ByteVector.view("myname.txt".getBytes()))
+    val m = MetadataMap(
+      key2 -> ByteVector.empty,
+      key1 -> ByteVector.view("myname.txt".getBytes())
+    )
     assertEquals(m.getString(key1), Some("myname.txt"))

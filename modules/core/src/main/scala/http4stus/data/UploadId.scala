@@ -9,7 +9,8 @@ import org.http4s.Uri
 opaque type UploadId = String
 
 object UploadId:
-  private[this] val validChars = (('A' to 'Z') ++ ('a' to 'z') ++ ('0' to '9') ++ "-._~").toSet
+  private[this] val validChars =
+    (('A' to 'Z') ++ ('a' to 'z') ++ ('0' to '9') ++ "-._~").toSet
 
   def fromString(s: String): Either[String, UploadId] =
     if (s.nonEmpty && s.forall(validChars.contains)) Right(s)
@@ -27,5 +28,4 @@ object UploadId:
   given Uri.Path.SegmentEncoder[UploadId] =
     Uri.Path.SegmentEncoder.instance(a => Uri.Path.Segment(a))
 
-  extension (self: UploadId)
-    def value: String = self
+  extension (self: UploadId) def value: String = self

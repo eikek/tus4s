@@ -1,7 +1,7 @@
 package http4stus.protocol.headers
 
-import munit.*
 import http4stus.data.MetadataMap
+import munit.*
 
 class UploadMetadataTest extends FunSuite:
 

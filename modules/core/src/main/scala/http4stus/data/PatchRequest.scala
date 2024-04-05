@@ -1,9 +1,10 @@
 package http4stus.data
 
 import fs2.Stream
+
 import http4stus.protocol.headers.UploadChecksum
 
-final case class UploadChunk[F[_]](
+final case class PatchRequest[F[_]](
     id: UploadId,
     offset: ByteSize,
     contentLength: Option[ByteSize],

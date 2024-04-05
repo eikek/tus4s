@@ -1,12 +1,14 @@
 package http4stus.protocol.headers
 
-import cats.syntax.all.*
 import java.time.Instant
-import org.typelevel.ci.CIString
-import org.http4s.Header
 import java.time.format.DateTimeFormatter
-import org.http4s.ParseResult
+
+import cats.syntax.all.*
+
+import org.http4s.Header
 import org.http4s.ParseFailure
+import org.http4s.ParseResult
+import org.typelevel.ci.CIString
 
 final case class UploadExpires(time: Instant):
   def render: String =

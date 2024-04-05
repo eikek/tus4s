@@ -4,19 +4,17 @@ import cats.effect.Sync
 import cats.syntax.all.*
 
 import http4stus.Endpoint
-import http4stus.protocol.*
-import org.http4s.*
-import org.http4s.implicits.*
-import org.http4s.headers.`Cache-Control`
 import http4stus.data.*
+import http4stus.protocol.*
 import http4stus.protocol.headers.*
+import org.http4s.*
 import org.http4s.headers.Location
+import org.http4s.headers.`Cache-Control`
+import org.http4s.implicits.*
 
-final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], config: TusConfig[F])
+final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
     extends Endpoint[F]
     with Http4sTusDsl[F]:
-
-  private val checksumMismatch: Status = Status.fromInt(460).fold(throw _, identity)
 
   def routes: HttpRoutes[F] = HttpRoutes.of {
     case HEAD -> Root / UploadId(id)        => head(id)
@@ -28,7 +26,8 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], config: TusConfig[F])
         case Some(HEAD)   => head(id)
         case _            => NotFound()
     case req @ POST -> Root =>
-      Extension.findCreation(tus.extensions) match
+      // either concat-final or creation
+      Extension.findCreation(tus.config.extensions) match
         case Some(Extension.Creation(opts)) =>
           for {
             input <- req.as[CreationRequest[F]]
@@ -45,25 +44,27 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], config: TusConfig[F])
               BadRequest("Creation with upload not supported")
             )
             // max size exceeded?
-            fail3 = config.maxSize
+            fail3 = tus.config.maxSize
               .filter(m => input.uploadLength.exists(len => len >= m))
-              .map(_ => PayloadTooLarge(s"max size is ${config.maxSize}"))
+              .map(_ => PayloadTooLarge(s"max size is ${tus.config.maxSize}"))
 
             wrongAlgo = input.checksum.exists(cs =>
-              !Extension.includesAlgorithm(tus.extensions, cs.algorithm)
+              !Extension.includesAlgorithm(tus.config.extensions, cs.algorithm)
             )
             fail4 = Option.when(wrongAlgo)(
               BadRequest(
                 s"Checksum algorithm ${input.checksum.map(_.algorithm)} not supported"
               )
             )
-            fail5 = Option.when(input.isPartial && Extension.noConcat(tus.extensions))(
+            fail5 = Option.when(
+              input.isPartial && Extension.noConcat(tus.config.extensions)
+            )(
               BadRequest(s"Concatenation and partial chunks not supported")
             )
 
             resp <- (fail1 <+> fail2 <+> fail3).getOrElse(tus.create(input).flatMap {
               case CreationResult.Success(id, offset, expires) =>
-                val base = config.baseUri.getOrElse(uri"")
+                val base = baseUri.getOrElse(uri"")
                 Created
                   .headers(Location(base / id))
                   .withOffset(offset)
@@ -77,8 +78,8 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], config: TusConfig[F])
     case OPTIONS -> Root =>
       NoContent
         .headers(TusVersion.V1_0_0)
-        .withMaxSize(config.maxSize)
-        .withExtensions(tus.extensions)
+        .withMaxSize(tus.config.maxSize)
+        .withExtensions(tus.config.extensions)
         .withTusResumable
     case DELETE -> Root / UploadId(id) =>
       delete(id)
@@ -98,23 +99,23 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], config: TusConfig[F])
     }
 
   private def patch(id: UploadId, req: Request[F]): F[Response[F]] = {
-    import IdToUploadChunk.given
+    import IdToPatchRequest.given
 
     for {
-      input <- req.as[IdToUploadChunk[F]]
+      input <- req.as[IdToPatchRequest[F]]
       chunk = input(id)
       wrongAlgo = chunk.checksum.exists(cs =>
-        !Extension.includesAlgorithm(tus.extensions, cs.algorithm)
+        !Extension.includesAlgorithm(tus.config.extensions, cs.algorithm)
       )
       fail1 = Option.when(wrongAlgo)(
         BadRequest(s"Checksum algorithm ${chunk.checksum.map(_.algorithm)} not supported")
       )
-      fail2 = Option.when(chunk.isPartial && Extension.noConcat(tus.extensions))(
+      fail2 = Option.when(chunk.isPartial && Extension.noConcat(tus.config.extensions))(
         BadRequest(s"Concatenation and partial chunks not supported")
       )
-      fail3 = config.maxSize
+      fail3 = tus.config.maxSize
         .filter(m => chunk.uploadLength.exists(len => len >= m))
-        .map(_ => PayloadTooLarge(s"max size is ${config.maxSize}"))
+        .map(_ => PayloadTooLarge(s"max size is ${tus.config.maxSize}"))
 
       resp <- (fail1 <+> fail2 <+> fail3).getOrElse(tus.receive(chunk).flatMap {
         case ReceiveResult.NotFound => NotFound().withTusResumable

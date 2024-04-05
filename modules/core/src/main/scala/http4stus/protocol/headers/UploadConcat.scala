@@ -1,9 +1,9 @@
 package http4stus.protocol.headers
 
 import http4stus.data.*
-import org.typelevel.ci.CIString
 import org.http4s.Header
 import org.http4s.ParseResult
+import org.typelevel.ci.CIString
 
 final case class UploadConcat(concatType: ConcatType):
   def isPartial: Boolean = concatType match

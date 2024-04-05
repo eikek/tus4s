@@ -57,7 +57,15 @@ object CreationRequest:
 
       EitherT.fromEither(
         uploadLen.map(ulen =>
-          CreationRequest(meta, false, ulen, Some(ByteSize.zero), None, false, Stream.empty)
+          CreationRequest(
+            meta,
+            false,
+            ulen,
+            Some(ByteSize.zero),
+            None,
+            false,
+            Stream.empty
+          )
         )
       )
     }

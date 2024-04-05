@@ -1,19 +1,21 @@
 package http4stus.server
 
+import java.time.Instant
+
+import cats.Applicative
 import cats.Monad
+import cats.data.NonEmptyList
 import cats.syntax.all.*
 
 import http4stus.data.ByteSize
+import http4stus.data.Extension
+import http4stus.data.MetadataMap
 import http4stus.protocol.headers.*
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
-import http4stus.data.Extension
-import cats.data.NonEmptyList
-import cats.Applicative
-import http4stus.data.MetadataMap
-import java.time.Instant
 
 private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
+  val checksumMismatch: Status = Status.fromInt(460).fold(throw _, identity)
 
   def requireContentType(req: Request[F], mt: MediaType)(
       body: => F[Response[F]]

@@ -2,10 +2,11 @@ package http4stus.data
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import org.http4s.Uri
+
 import http4stus.internal.StringUtil
-import org.http4s.ParseResult
 import org.http4s.ParseFailure
+import org.http4s.ParseResult
+import org.http4s.Uri
 
 enum ConcatType:
   case Final(partials: NonEmptyList[Uri])

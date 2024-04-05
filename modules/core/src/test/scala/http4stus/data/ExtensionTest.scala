@@ -1,8 +1,9 @@
 package http4stus.data
 
-import munit.*
 import cats.data.NonEmptyList as Nel
+
 import http4stus.data.Extension.includesAlgorithm
+import munit.*
 
 class ExtensionTest extends FunSuite:
 

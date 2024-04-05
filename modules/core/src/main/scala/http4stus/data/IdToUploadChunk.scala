@@ -9,10 +9,10 @@ import http4stus.protocol.headers.*
 import org.http4s.headers.`Content-Length`
 import org.http4s.{Headers => _, *}
 
-type IdToUploadChunk[F[_]] = UploadId => UploadChunk[F]
+type IdToPatchRequest[F[_]] = UploadId => PatchRequest[F]
 
-object IdToUploadChunk:
-  given [F[_]: Applicative]: EntityDecoder[F, IdToUploadChunk[F]] =
+object IdToPatchRequest:
+  given [F[_]: Applicative]: EntityDecoder[F, IdToPatchRequest[F]] =
     EntityDecoder.decodeBy(Headers.offsetOctetStream) { req =>
       val offset = req.headers
         .get[UploadOffset]
@@ -29,7 +29,7 @@ object IdToUploadChunk:
         offset
           .map(off =>
             (id: UploadId) =>
-              UploadChunk(
+              PatchRequest(
                 id,
                 off.offset,
                 cntLen.map(ByteSize.bytes),

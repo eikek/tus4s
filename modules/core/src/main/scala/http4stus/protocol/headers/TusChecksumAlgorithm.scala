@@ -1,11 +1,12 @@
 package http4stus.protocol.headers
 
 import cats.data.NonEmptyList
+
 import http4stus.data.*
 import http4stus.internal.StringUtil
-import org.typelevel.ci.CIString
 import org.http4s.Header
 import org.http4s.ParseResult
+import org.typelevel.ci.CIString
 
 final case class TusChecksumAlgorithm(algorithms: NonEmptyList[ChecksumAlgorithm]):
   def render: String = algorithms.map(_.name).toList.mkString(",")
