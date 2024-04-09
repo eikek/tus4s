@@ -13,6 +13,7 @@ import http4stus.data.MetadataMap
 import http4stus.protocol.headers.*
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
+import http4stus.data.ConcatType
 
 private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
   val checksumMismatch: Status = Status.fromInt(460).fold(throw _, identity)
@@ -53,3 +54,6 @@ private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
     def withMetadata(meta: MetadataMap): F[Response[F]] =
       if (meta.isEmpty) self
       else self.map(_.putHeaders(UploadMetadata(meta)))
+
+    def withConcatType(ct: Option[ConcatType]): F[Response[F]] =
+      putHeader(ct.map(UploadConcat(_)))

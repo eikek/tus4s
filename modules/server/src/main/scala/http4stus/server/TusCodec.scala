@@ -3,6 +3,7 @@ package http4stus.server
 import cats.Applicative
 import cats.Monad
 import cats.data.EitherT
+import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.Stream
 
@@ -54,6 +55,42 @@ object TusCodec:
       creation: Extension.Creation
   ): EntityDecoder[F, UploadRequest[F]] =
     withUpload(cfg, creation).orElse(withoutUpload(cfg, creation))
+
+  def forConcatFinal[F[_]: Applicative](
+      cfg: TusConfig,
+      baseUri: Option[Uri]
+  ): EntityDecoder[F, ConcatRequest] =
+    EntityDecoder.decodeBy(MediaRange.`*/*`) { req =>
+      req.headers.get[UploadConcat] match
+        case Some(UploadConcat(complete: ConcatType.Final)) =>
+          if (Extension.hasConcat(cfg.extensions))
+            val meta =
+              req.headers.get[UploadMetadata].map(_.decoded).getOrElse(MetadataMap.empty)
+            EitherT.fromEither(
+              complete
+                .resolveToId(baseUri)
+                .leftMap(TusDecodeFailure.PartialUriError(_))
+                .map(ids => ConcatRequest(ids, meta))
+            )
+          else
+            EitherT.leftT(TusDecodeFailure.UnsupportedExtension(Extension.Concatenation))
+
+        case _ =>
+          EitherT.leftT(TusDecodeFailure.MissingHeader(UploadConcat.name))
+    }
+
+  def forCreationOrConcatFinal[F[_]: Sync](
+      cfg: TusConfig,
+      baseUri: Option[Uri]
+  ): EntityDecoder[F, Either[UploadRequest[F], ConcatRequest]] =
+    val d1 =
+      Extension.findCreation(cfg.extensions) match
+        case Some(creation) =>
+          forCreation(cfg, creation).map(_.asLeft[ConcatRequest])
+        case None =>
+          error(TusDecodeFailure.UnsupportedExtension(Extension.Creation(Set.empty)))
+    val d2 = forConcatFinal[F](cfg, baseUri).map(_.asRight[UploadRequest[F]])
+    d2.orElse(d1)
 
   private def validateChecksum(
       cfg: TusConfig,
@@ -146,4 +183,11 @@ object TusCodec:
           Stream.empty
         )
       )
+    }
+
+  private def error[F[_]: Sync, T](t: Throwable): EntityDecoder[F, T] =
+    new EntityDecoder[F, T] {
+      override def decode(m: Media[F], strict: Boolean): DecodeResult[F, T] =
+        DecodeResult(m.body.compile.drain *> Sync[F].raiseError(t))
+      override def consumes: Set[MediaRange] = Set.empty
     }

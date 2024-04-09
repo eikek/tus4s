@@ -1,7 +1,5 @@
 package http4stus.protocol
 
-import cats.data.NonEmptyList
-
 import http4stus.data.*
 
 trait TusProtocol[F[_]]:
@@ -21,4 +19,4 @@ trait TusProtocol[F[_]]:
   def delete(id: UploadId): F[Unit]
 
   /** Concatenate chunks into a final upload, removes partial uploads. */
-  def concat(ids: NonEmptyList[UploadId]): F[ConcatResult]
+  def concat(req: ConcatRequest): F[ConcatResult]

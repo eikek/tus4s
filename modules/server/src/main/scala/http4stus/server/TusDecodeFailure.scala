@@ -40,3 +40,9 @@ object TusDecodeFailure:
     def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
       Response(Status.UnprocessableEntity, httpVersion)
         .withEntity(message)(EntityEncoder.stringEncoder[F])
+
+  final case class PartialUriError(msg: String) extends TusDecodeFailure:
+    val message: String = show"There was an error resolving partial uris: $msg"
+    def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
+      Response(Status.UnprocessableEntity, httpVersion)
+        .withEntity(message)(EntityEncoder.stringEncoder[F])

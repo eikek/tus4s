@@ -26,31 +26,13 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
         case Some(HEAD)   => head(id)
         case _            => NotFound()
     case req @ POST -> Root =>
-      req.headers.get[UploadConcat] match
-        case Some(UploadConcat(complete: ConcatType.Final)) =>
-          if (Extension.noConcat(tus.config.extensions)) BadRequest()
-          else ???
-        case _ =>
-          Extension.findCreation(tus.config.extensions) match
-            case Some(creation) =>
-              for {
-                input <- req.as[UploadRequest[F]](using
-                  Sync[F],
-                  TusCodec.forCreation(tus.config, creation)
-                )
-                resp <- tus.create(input).flatMap {
-                  case CreationResult.Success(id, offset, expires) =>
-                    val base = baseUri.getOrElse(uri"")
-                    Created
-                      .headers(Location(base / id))
-                      .withOffset(offset)
-                      .withExpires(expires)
-                      .withTusResumable
-                }
-              } yield resp
-            case None =>
-              NotFound()
-
+      for {
+        input <- req.as[Either[UploadRequest[F], ConcatRequest]](using
+          Sync[F],
+          TusCodec.forCreationOrConcatFinal[F](tus.config, baseUri)
+        )
+        resp <- input.fold(create(_), concatenate(_))
+      } yield resp
     case OPTIONS -> Root =>
       NoContent
         .headers(TusVersion.V1_0_0)
@@ -61,6 +43,26 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
       delete(id)
   }
 
+  private def create(req: UploadRequest[F]): F[Response[F]] =
+    tus.create(req).flatMap { case CreationResult.Success(id, offset, expires) =>
+      val base = baseUri.getOrElse(uri"")
+      Created
+        .headers(Location(base / id))
+        .withOffset(offset)
+        .withExpires(expires)
+        .withTusResumable
+    }
+
+  private def concatenate(req: ConcatRequest): F[Response[F]] =
+    tus.concat(req).flatMap {
+      case ConcatResult.Success(id) =>
+        val base = baseUri.getOrElse(uri"")
+        Created.headers(Location(base / id)).withTusResumable
+
+      case ConcatResult.PartsNotFound(ids) =>
+        UnprocessableEntity(s"Some partials could not be found: $ids").withTusResumable
+    }
+
   private def head(id: UploadId): F[Response[F]] =
     tus.find(id).flatMap {
       case Some(upload) =>
@@ -70,6 +72,7 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
           .withUploadLength(upload.length)
           .withTusResumable
           .withMetadata(upload.meta)
+          .withConcatType(upload.concatType)
 
       case None => NotFound().withTusResumable
     }
@@ -87,6 +90,8 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
           Response(checksumMismatch).pure[F]
         case ReceiveResult.Success(newOffset, expires) =>
           NoContent().withOffset(newOffset).withTusResumable.withExpires(expires)
+        case ReceiveResult.UploadIsFinal =>
+          Forbidden("Patch against a final upload").withTusResumable
       }
     } yield resp
 

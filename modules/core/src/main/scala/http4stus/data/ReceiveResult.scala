@@ -7,4 +7,5 @@ enum ReceiveResult:
   case OffsetMismatch(current: ByteSize)
   case UploadLengthMismatch
   case ChecksumMismatch
+  case UploadIsFinal
   case NotFound
