@@ -1,5 +1,7 @@
 package http4stus.data
 
+import cats.data.NonEmptyList
+
 enum ChecksumAlgorithm:
   case Sha1
   case Sha256
@@ -9,6 +11,8 @@ enum ChecksumAlgorithm:
   lazy val name: String = productPrefix.toLowerCase
 
 object ChecksumAlgorithm:
+  val all: NonEmptyList[ChecksumAlgorithm] =
+    NonEmptyList.fromListUnsafe(ChecksumAlgorithm.values.toList)
 
   def fromString(s: String): Either[String, ChecksumAlgorithm] =
     ChecksumAlgorithm.values

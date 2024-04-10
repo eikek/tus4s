@@ -18,5 +18,5 @@ trait TusProtocol[F[_]]:
   /** Delete an upload (finished or not) */
   def delete(id: UploadId): F[Unit]
 
-  /** Concatenate chunks into a final upload, removes partial uploads. */
+  /** Concatenate chunks into a final upload, may remove partial uploads. */
   def concat(req: ConcatRequest): F[ConcatResult]

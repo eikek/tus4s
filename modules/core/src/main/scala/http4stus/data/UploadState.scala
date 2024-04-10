@@ -8,3 +8,4 @@ final case class UploadState(
     concatType: Option[ConcatType] = None
 ):
   def isDone: Boolean = length.exists(_ == offset)
+  def isFinal: Boolean = concatType.exists(_.isFinal)

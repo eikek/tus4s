@@ -12,6 +12,8 @@ enum ConcatType:
   case Final(partials: NonEmptyList[Uri])
   case Partial
 
+  def isFinal: Boolean = this != Partial
+
 object ConcatType:
   def fromString(s: String): ParseResult[ConcatType] =
     if ("partial".equalsIgnoreCase(s)) Right(Partial)

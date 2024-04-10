@@ -36,7 +36,7 @@ object TusDecodeFailure:
         .withEntity(message)(EntityEncoder.stringEncoder[F])
 
   final case class UnsupportedExtension(ext: Extension) extends TusDecodeFailure:
-    val message: String = show"The server doesn't support the extension $ext"
+    val message: String = show"The server doesn't support the extension or extension variant: $ext"
     def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
       Response(Status.UnprocessableEntity, httpVersion)
         .withEntity(message)(EntityEncoder.stringEncoder[F])

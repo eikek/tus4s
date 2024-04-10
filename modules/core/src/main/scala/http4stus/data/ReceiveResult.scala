@@ -6,6 +6,7 @@ enum ReceiveResult:
   case Success(offset: ByteSize, expires: Option[Instant])
   case OffsetMismatch(current: ByteSize)
   case UploadLengthMismatch
-  case ChecksumMismatch
+  case UploadDone
   case UploadIsFinal
+  case ChecksumMismatch
   case NotFound
