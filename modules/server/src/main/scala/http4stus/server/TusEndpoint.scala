@@ -44,13 +44,16 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
   }
 
   private def create(req: UploadRequest[F]): F[Response[F]] =
-    tus.create(req).flatMap { case CreationResult.Success(id, offset, expires) =>
-      val base = baseUri.getOrElse(uri"")
-      Created
-        .headers(Location(base / id))
-        .withOffset(offset)
-        .withExpires(expires)
-        .withTusResumable
+    tus.create(req).flatMap {
+      case CreationResult.ChecksumMismatch =>
+        Response(checksumMismatch).pure[F]
+      case CreationResult.Success(id, offset, expires) =>
+        val base = baseUri.getOrElse(uri"")
+        Created
+          .headers(Location(base / id))
+          .withOffset(offset)
+          .withExpires(expires)
+          .withTusResumable
     }
 
   private def concatenate(req: ConcatRequest): F[Response[F]] =
@@ -86,6 +89,8 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
           Conflict(s"Offset does not match, current is $current").withTusResumable
         case ReceiveResult.UploadLengthMismatch =>
           Conflict(s"Upload length has already been specified")
+        case ReceiveResult.UploadDone =>
+          Conflict(s"Upload is already done")
         case ReceiveResult.ChecksumMismatch =>
           Response(checksumMismatch).pure[F]
         case ReceiveResult.Success(newOffset, expires) =>
