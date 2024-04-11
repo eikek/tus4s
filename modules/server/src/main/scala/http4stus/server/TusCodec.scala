@@ -70,7 +70,7 @@ object TusCodec:
               complete
                 .resolveToId(baseUri)
                 .leftMap(TusDecodeFailure.PartialUriError(_))
-                .map(ids => ConcatRequest(ids, meta))
+                .map(ids => ConcatRequest(ids, complete.partials, meta))
             )
           else
             EitherT.leftT(TusDecodeFailure.UnsupportedExtension(Extension.Concatenation))
@@ -90,7 +90,7 @@ object TusCodec:
         case None =>
           error(TusDecodeFailure.UnsupportedExtension(Extension.Creation(Set.empty)))
     val d2 = forConcatFinal[F](cfg, baseUri).map(_.asRight[UploadRequest[F]])
-    d2.orElse(d1)
+    d1.orElse(d2)
 
   private def validateChecksum(
       cfg: TusConfig,

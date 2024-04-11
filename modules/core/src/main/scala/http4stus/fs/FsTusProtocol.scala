@@ -32,7 +32,7 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
         e.readState[F].flatMap { state =>
           if (state.offset != chunk.offset)
             ReceiveResult.OffsetMismatch(state.offset).pure[F]
-          else if (state.length.isDefined && chunk.uploadLength != state.length)
+          else if (state.length.exists(l1 => chunk.uploadLength.exists(l2 => l1 != l2)))
             ReceiveResult.UploadLengthMismatch.pure[F]
           else if (state.isDone) ReceiveResult.UploadDone.pure[F]
           else if (state.isFinal) ReceiveResult.UploadIsFinal.pure[F]
@@ -99,9 +99,9 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
       .map(_.toList.partitionMap(identity))
     entries.flatMap {
       case (Nil, parts) =>
-        makeNewEntry.flatMap { entry =>
-          entry.copyAll(parts, req.meta).map(state => ConcatResult.Success(state.id))
-        }
+        UploadEntry
+          .copyAll(dir, parts, req.uris, req.meta)
+          .map(state => ConcatResult.Success(state.id))
       case (missing, _) =>
         ConcatResult.PartsNotFound(NonEmptyList.fromListUnsafe(missing)).pure[F]
     }

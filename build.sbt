@@ -90,7 +90,6 @@ val core = project
 
 val server = project
   .in(file("modules/server"))
-  .disablePlugins(RevolverPlugin)
   .settings(sharedSettings)
   .settings(testSettings)
   .settings(scalafixSettings)
@@ -99,7 +98,11 @@ val server = project
     description := "Provides tus server routes",
     libraryDependencies ++=
       Dependencies.http4sCore ++
-        Dependencies.http4sDsl
+        Dependencies.http4sDsl,
+    libraryDependencies ++= (Dependencies.http4sEmber ++ Dependencies.scribe)
+      .map(_ % Test),
+    reStart / fullClasspath := (Test / fullClasspath).value,
+    reStart / mainClass := Some("http4stus.server.ServerTest")
   )
   .dependsOn(core)
 
