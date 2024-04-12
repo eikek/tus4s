@@ -50,7 +50,7 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
                   .subflatMap(ok => Option.when(!ok)(ReceiveResult.ChecksumMismatch))
 
               checksumMismatch.getOrElseF {
-                e.append(temp, newState)
+                (e.append(temp, newState) >> e.writeState(newState))
                   .as(ReceiveResult.Success(newState.offset, None))
               }
             }
@@ -82,7 +82,7 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
               .subflatMap(ok => Option.when(!ok)(CreationResult.ChecksumMismatch))
 
           checksumMismatch.getOrElseF {
-            e.append(temp, state)
+            (e.append(temp, state) >> e.writeState(state))
               .as(CreationResult.Success(e.id, state.offset, None))
           }
         }

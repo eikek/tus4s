@@ -10,12 +10,13 @@ import org.http4s.server.Router
 import org.http4s.server.middleware.{ErrorAction, Logger}
 import http4stus.protocol.TusProtocol
 import org.http4s.HttpApp
+import org.http4s.server.middleware.CORS
 
 object ServerTest extends IOApp:
 
   val tusBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), None)
 
-  //CORS middleware messes with OPTIONS requests
+  // CORS middleware messes with OPTIONS requests
   def corsAllow(httpApp: HttpApp[IO]): HttpApp[IO] =
     HttpApp(req =>
       httpApp
@@ -30,8 +31,12 @@ object ServerTest extends IOApp:
         )
     )
 
+  def corsAll(httpApp: HttpApp[IO]): HttpApp[IO] =
+    CORS.policy.withAllowHeadersAll.withAllowMethodsAll.withExposeHeadersAll
+      .withAllowOriginAll(httpApp)
+
   def createApp(backend: TusProtocol[IO]) =
-    corsAllow(
+    corsAll(
       ErrorAction.httpApp[IO](
         Logger.httpApp(true, false)(
           Router(
