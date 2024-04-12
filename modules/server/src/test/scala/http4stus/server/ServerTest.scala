@@ -9,21 +9,40 @@ import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.http4s.server.middleware.{ErrorAction, Logger}
 import http4stus.protocol.TusProtocol
+import org.http4s.HttpApp
 
 object ServerTest extends IOApp:
 
   val tusBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), None)
+
+  //CORS middleware messes with OPTIONS requests
+  def corsAllow(httpApp: HttpApp[IO]): HttpApp[IO] =
+    HttpApp(req =>
+      httpApp
+        .run(req)
+        .map(
+          _.putHeaders(
+            "Access-Control-Allow-Origin" -> "*",
+            "Access-Control-Allow-Methods" -> "*",
+            "Access-Control-Allow-Headers" -> "*",
+            "Access-Control-Expose-Headers" -> "*"
+          )
+        )
+    )
+
   def createApp(backend: TusProtocol[IO]) =
-    ErrorAction.httpApp[IO](
-      Logger.httpApp(true, false)(
-        Router(
-          "files" -> TusEndpointBuilder[IO](backend)
-            .withBaseUri(uri"/files")
-            .build
-            .routes
-        ).orNotFound
-      ),
-      (req, ex) => scribe.cats.io.error(s"Request $req failed", ex)
+    corsAllow(
+      ErrorAction.httpApp[IO](
+        Logger.httpApp(true, false)(
+          Router(
+            "files" -> TusEndpointBuilder[IO](backend)
+              .withBaseUri(uri"/files")
+              .build
+              .routes
+          ).orNotFound
+        ),
+        (req, ex) => scribe.cats.io.error(s"Request $req failed", ex)
+      )
     )
 
   scribe.Logger.root.withMinimumLevel(scribe.Level.Debug).replace()

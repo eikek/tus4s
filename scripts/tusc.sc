@@ -17,13 +17,13 @@ val upload = new TusUpload(file)
 val executor = new TusExecutor {
   override protected def makeAttempt(): Unit = {
     val uploader = client.resumeOrCreateUpload(upload)
-    uploader.setChunkSize(1024)
+    uploader.setChunkSize(256)
     var going = true
     while (going) {
       val total = upload.getSize()
       val current = uploader.getOffset()
       val progress = current.toDouble / total * 100
-      print(f"\rUpload at $progress%6.2f")
+      print(f"\rUploading $progress%6.2f")
       going = uploader.uploadChunk() != -1
     }
     println("")

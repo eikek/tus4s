@@ -26,17 +26,13 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
         case Some(HEAD)   => head(id)
         case _            => NotFound()
     case req @ POST -> Root =>
-      req.headers.get[Expect].map(_.expectation) match
-        case Some(Expect.Expectation.Continue) =>
-          Continue().withTusResumable
-        case _ =>
-          for {
-            input <- req.as[Either[UploadRequest[F], ConcatRequest]](using
-              Sync[F],
-              TusCodec.forCreationOrConcatFinal[F](tus.config, baseUri)
-            )
-            resp <- input.fold(create(_), concatenate(_))
-          } yield resp
+      for {
+        input <- req.as[Either[UploadRequest[F], ConcatRequest]](using
+          Sync[F],
+          TusCodec.forCreationOrConcatFinal[F](tus.config, baseUri)
+        )
+        resp <- input.fold(create(_), concatenate(_))
+      } yield resp
     case OPTIONS -> Root =>
       NoContent
         .headers(TusVersion.V1_0_0)
@@ -86,7 +82,10 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
 
   private def patch(id: UploadId, req: Request[F]): F[Response[F]] =
     for {
-      input <- req.as[UploadRequest[F]](using Sync[F], TusCodec.forPatch[F](tus.config))
+      input <- req.as[UploadRequest[F]](using
+        Sync[F],
+        TusCodec.forPatch[F](tus.config)
+      )
       resp <- tus.receive(id, input).flatMap {
         case ReceiveResult.NotFound => NotFound().withTusResumable
         case ReceiveResult.OffsetMismatch(current) =>
