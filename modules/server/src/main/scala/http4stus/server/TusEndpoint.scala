@@ -26,13 +26,17 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
         case Some(HEAD)   => head(id)
         case _            => NotFound()
     case req @ POST -> Root =>
-      for {
-        input <- req.as[Either[UploadRequest[F], ConcatRequest]](using
-          Sync[F],
-          TusCodec.forCreationOrConcatFinal[F](tus.config, baseUri)
-        )
-        resp <- input.fold(create(_), concatenate(_))
-      } yield resp
+      req.headers.get[Expect].map(_.expectation) match
+        case Some(Expect.Expectation.Continue) =>
+          Continue().withTusResumable
+        case _ =>
+          for {
+            input <- req.as[Either[UploadRequest[F], ConcatRequest]](using
+              Sync[F],
+              TusCodec.forCreationOrConcatFinal[F](tus.config, baseUri)
+            )
+            resp <- input.fold(create(_), concatenate(_))
+          } yield resp
     case OPTIONS -> Root =>
       NoContent
         .headers(TusVersion.V1_0_0)

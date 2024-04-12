@@ -105,3 +105,10 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
       case (missing, _) =>
         ConcatResult.PartsNotFound(NonEmptyList.fromListUnsafe(missing)).pure[F]
     }
+
+object FsTusProtocol:
+  def create[F[_]: Files: Sync](
+      dir: Path,
+      maxSize: Option[ByteSize]
+  ): F[FsTusProtocol[F]] =
+    Files[F].createDirectories(dir).map(_ => new FsTusProtocol[F](dir, maxSize))
