@@ -7,7 +7,7 @@ trait TusProtocol[F[_]]:
   def config: TusConfig
 
   /** Look up an upload and return its current state. */
-  def find(id: UploadId): F[Option[UploadState]]
+  def find(id: UploadId): F[Option[FileResult[F]]]
 
   /** Receive a chunk of data from the given offset. */
   def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult]

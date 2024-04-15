@@ -11,14 +11,33 @@ import org.http4s.*
 import org.http4s.headers.Location
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
+import cats.data.OptionT
+import http4stus.data.MetadataMap.Key
+import org.http4s.headers.*
+import org.typelevel.ci.*
 
-final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
-    extends Endpoint[F]
+final class TusEndpoint[F[_]: Sync](
+    tus: TusProtocol[F],
+    allowRetrieve: Boolean,
+    baseUri: Option[Uri]
+) extends Endpoint[F]
     with Http4sTusDsl[F]:
 
   def routes: HttpRoutes[F] = HttpRoutes.of {
     case HEAD -> Root / UploadId(id)        => head(id)
     case req @ PATCH -> Root / UploadId(id) => patch(id, req)
+    case GET -> Root / UploadId(id) if allowRetrieve =>
+      (for
+        file <- OptionT(tus.find(id)).filter(_.state.isDone)
+        ct = file.getContentType.map(`Content-Type`(_))
+        fn = file.state.meta
+          .getString(Key.fileName)
+          .map(n => `Content-Disposition`("inline", Map(ci"filename" -> n)))
+        resp <- OptionT.liftF(
+          Ok(file.data).withMetadata(file.state.meta).withUploadLength(file.state.length)
+        )
+      yield resp.putHeaders(ct, fn)).getOrElseF(NotFound())
+
     case req @ POST -> Root / UploadId(id) =>
       req.headers.get[XHttpMethodOverride].map(_.method) match
         case Some(PATCH)  => patch(id, req)
@@ -31,7 +50,7 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
           Sync[F],
           TusCodec.forCreationOrConcatFinal[F](tus.config, baseUri)
         )
-        resp <- input.fold(create(_), concatenate(_))
+        resp <- input.fold(create(req.httpVersion), concatenate(_))
       } yield resp
     case OPTIONS -> Root =>
       NoContent
@@ -43,10 +62,12 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
       delete(id)
   }
 
-  private def create(req: UploadRequest[F]): F[Response[F]] =
+  private def create(hv: HttpVersion)(req: UploadRequest[F]): F[Response[F]] =
     tus.create(req).flatMap {
       case CreationResult.ChecksumMismatch =>
         Response(checksumMismatch).pure[F]
+      case CreationResult.UploadTooLarge(maxSize, current) =>
+        TusDecodeFailure.MaxSizeExceeded(maxSize, current).toHttpResponse(hv).pure[F]
       case CreationResult.Success(id, offset, expires) =>
         val base = baseUri.getOrElse(uri"")
         Created
@@ -71,11 +92,11 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
       case Some(upload) =>
         NoContent
           .headers(`Cache-Control`(CacheDirective.`no-store`))
-          .withOffset(upload.offset)
-          .withUploadLength(upload.length)
+          .withOffset(upload.state.offset)
+          .withUploadLength(upload.state.length)
           .withTusResumable
-          .withMetadata(upload.meta)
-          .withConcatType(upload.concatType)
+          .withMetadata(upload.state.meta)
+          .withConcatType(upload.state.concatType)
 
       case None => NotFound().withTusResumable
     }
@@ -96,6 +117,11 @@ final class TusEndpoint[F[_]: Sync](tus: TusProtocol[F], baseUri: Option[Uri])
           Conflict(s"Upload is already done")
         case ReceiveResult.ChecksumMismatch =>
           Response(checksumMismatch).pure[F]
+        case ReceiveResult.UploadTooLarge(max, current) =>
+          TusDecodeFailure
+            .MaxSizeExceeded(max, current)
+            .toHttpResponse(req.httpVersion)
+            .pure[F]
         case ReceiveResult.Success(newOffset, expires) =>
           NoContent().withOffset(newOffset).withTusResumable.withExpires(expires)
         case ReceiveResult.UploadIsFinal =>

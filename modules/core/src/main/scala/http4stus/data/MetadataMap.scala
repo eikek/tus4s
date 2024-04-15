@@ -6,14 +6,23 @@ import cats.kernel.Monoid
 
 import http4stus.data.MetadataMap.Key
 import scodec.bits.ByteVector
+import cats.data.NonEmptyList
 
 final case class MetadataMap(data: Map[Key, ByteVector]):
   def withValue(key: Key, value: ByteVector): MetadataMap =
     copy(data = data.updated(key, value))
 
-  def get(key: Key): Option[ByteVector] = data.get(key)
+  def get(key: Key, alternateKeys: Key*): Option[ByteVector] =
+    get(NonEmptyList(key, alternateKeys.toList))
 
-  def getString(key: Key): Option[String] = get(key).flatMap(_.decodeUtf8.toOption)
+  def get(keys: NonEmptyList[Key]): Option[ByteVector] =
+    keys.collectFirst(Function.unlift(data.get))
+
+  def getString(keys: NonEmptyList[Key]): Option[String] =
+    get(keys).flatMap(_.decodeUtf8.toOption)
+
+  def getString(key: Key, alternateKeys: Key*): Option[String] =
+    getString(NonEmptyList(key, alternateKeys.toList))
 
   def remove(key: Key): MetadataMap = MetadataMap(data.removed(key))
 
@@ -36,6 +45,14 @@ object MetadataMap:
     // newEncoder is stateful
     private def ascii = Charset.forName("ASCII").newEncoder()
     private val invalidChar: Char => Boolean = c => c.isWhitespace || c == ','
+
+    val contentType: NonEmptyList[Key] =
+      NonEmptyList
+        .of("contentType", "contenttype", "filetype", "fileType")
+        .map(unsafeFromString)
+
+    val fileName: NonEmptyList[Key] =
+      NonEmptyList.of("filename", "fileName").map(unsafeFromString)
 
     def fromString(key: String): Either[String, Key] =
       if (key.isEmpty || key.exists(invalidChar))

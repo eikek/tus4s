@@ -9,4 +9,5 @@ enum ReceiveResult:
   case UploadDone
   case UploadIsFinal
   case ChecksumMismatch
+  case UploadTooLarge(maxSize: ByteSize, current: ByteSize)
   case NotFound

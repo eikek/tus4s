@@ -18,7 +18,7 @@ final private case class UploadEntry(
     dir: Path
 ):
   private val stateFile = dir / "state"
-  private val dataFile = dir / "file"
+  private[fs] val dataFile = dir / "file"
 
   def readState[F[_]: Files: Sync]: F[UploadState] =
     Files[F].exists(stateFile).flatMap {
