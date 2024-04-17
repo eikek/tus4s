@@ -9,15 +9,15 @@ import org.http4s.Uri
 final case class TusEndpointBuilder[F[_]: Sync](
     tus: TusProtocol[F],
     baseUri: Option[Uri] = None,
-    allowRetrieve: Boolean = false
+    retrieve: Option[Retrieve[F]] = None
 ):
-  def build: Endpoint[F] = TusEndpoint(tus, allowRetrieve, baseUri)
+  def build: Endpoint[F] = TusEndpoint(tus, retrieve, baseUri)
 
   def withBaseUri(uri: Uri): TusEndpointBuilder[F] =
     copy(baseUri = Some(uri))
 
-  def withAllowRetrieve: TusEndpointBuilder[F] =
-    copy(allowRetrieve = true)
+  def withRetrieve(r: Retrieve[F]): TusEndpointBuilder[F] =
+    copy(retrieve = Some(r))
 
   def withTusProtocol(tus: TusProtocol[F]): TusEndpointBuilder[F] =
     copy(tus = tus)

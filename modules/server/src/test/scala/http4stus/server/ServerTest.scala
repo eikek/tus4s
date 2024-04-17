@@ -23,7 +23,7 @@ object ServerTest extends IOApp:
           "/" -> IndexRoutes.routes,
           "files" -> TusEndpointBuilder[IO](backend)
             .withBaseUri(uri"/files")
-            .withAllowRetrieve
+            .withRetrieve(Retrieve.simpleGet[IO])
             .build
             .routes
         ).orNotFound

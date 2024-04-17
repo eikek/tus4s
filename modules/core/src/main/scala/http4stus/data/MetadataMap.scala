@@ -54,6 +54,9 @@ object MetadataMap:
     val fileName: NonEmptyList[Key] =
       NonEmptyList.of("filename", "fileName").map(unsafeFromString)
 
+    val checksum: NonEmptyList[Key] =
+      NonEmptyList.of("checksum", "sha1", "sha256", "md5").map(unsafeFromString)
+
     def fromString(key: String): Either[String, Key] =
       if (key.isEmpty || key.exists(invalidChar))
         Left(s"Invalid key name (no spaces, commas, not empty): $key")

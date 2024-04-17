@@ -11,14 +11,11 @@ import org.http4s.*
 import org.http4s.headers.Location
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
-import cats.data.OptionT
-import http4stus.data.MetadataMap.Key
 import org.http4s.headers.*
-import org.typelevel.ci.*
 
 final class TusEndpoint[F[_]: Sync](
     tus: TusProtocol[F],
-    allowRetrieve: Boolean,
+    retrieve: Option[Retrieve[F]],
     baseUri: Option[Uri]
 ) extends Endpoint[F]
     with Http4sTusDsl[F]:
@@ -26,17 +23,8 @@ final class TusEndpoint[F[_]: Sync](
   def routes: HttpRoutes[F] = HttpRoutes.of {
     case HEAD -> Root / UploadId(id)        => head(id)
     case req @ PATCH -> Root / UploadId(id) => patch(id, req)
-    case GET -> Root / UploadId(id) if allowRetrieve =>
-      (for
-        file <- OptionT(tus.find(id)).filter(_.state.isDone)
-        ct = file.getContentType.map(`Content-Type`(_))
-        fn = file.state.meta
-          .getString(Key.fileName)
-          .map(n => `Content-Disposition`("inline", Map(ci"filename" -> n)))
-        resp <- OptionT.liftF(
-          Ok(file.data).withMetadata(file.state.meta).withUploadLength(file.state.length)
-        )
-      yield resp.putHeaders(ct, fn)).getOrElseF(NotFound())
+    case req @ GET -> Root / UploadId(id) if retrieve.isDefined =>
+      retrieve.map(_.find(tus, req, id)).getOrElse(NotFound())
 
     case req @ POST -> Root / UploadId(id) =>
       req.headers.get[XHttpMethodOverride].map(_.method) match
