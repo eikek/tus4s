@@ -9,7 +9,12 @@ import org.http4s.Header
 import org.http4s.ParseFailure
 import org.typelevel.ci.CIString
 
-final case class TusExtension(extensions: NonEmptyList[Extension])
+final case class TusExtension(extensions: NonEmptyList[Extension]):
+  lazy val findCreation: Option[Extension.Creation] =
+    Extension.findCreation(extensions.toList.toSet)
+
+  lazy val findChecksum: Option[Extension.Checksum] =
+    Extension.findChecksum(extensions.toList.toSet)
 
 object TusExtension:
   val name: CIString = CIString("Tus-Extension")

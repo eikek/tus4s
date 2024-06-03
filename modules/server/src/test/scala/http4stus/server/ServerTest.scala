@@ -1,17 +1,18 @@
 package http4stus.server
 
 import cats.effect.*
-import com.comcast.ip4s.*
-import org.http4s.ember.server.EmberServerBuilder
-import http4stus.fs.FsTusProtocol
 import fs2.io.file.Path
+
+import com.comcast.ip4s.*
+import http4stus.data.ByteSize
+import http4stus.fs.FsTusProtocol
+import http4stus.protocol.TusProtocol
+import org.http4s.HttpRoutes
+import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router
-import org.http4s.server.middleware.Logger
-import http4stus.protocol.TusProtocol
-import http4stus.data.ByteSize
-import org.http4s.HttpRoutes
 import org.http4s.server.middleware.ErrorHandling
+import org.http4s.server.middleware.Logger
 
 object ServerTest extends IOApp:
   val tusBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))

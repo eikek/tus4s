@@ -2,15 +2,18 @@ package http4stus.data
 
 import java.nio.charset.Charset
 
+import cats.data.NonEmptyList
 import cats.kernel.Monoid
 
 import http4stus.data.MetadataMap.Key
 import scodec.bits.ByteVector
-import cats.data.NonEmptyList
 
 final case class MetadataMap(data: Map[Key, ByteVector]):
   def withValue(key: Key, value: ByteVector): MetadataMap =
     copy(data = data.updated(key, value))
+
+  def withFilename(fn: String): MetadataMap =
+    withValue(MetadataMap.Key.fileName.head, ByteVector.view(fn.getBytes))
 
   def get(key: Key, alternateKeys: Key*): Option[ByteVector] =
     get(NonEmptyList(key, alternateKeys.toList))

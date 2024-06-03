@@ -15,7 +15,9 @@ object TusDecodeFailure:
 
   final case class MaxSizeExceeded(maxSize: ByteSize, size: ByteSize)
       extends TusDecodeFailure:
-    val message: String = show"Upload of $size exceeds max size of $maxSize"
+    val message: String =
+      if (maxSize == size) show"Upload exceeds $maxSize"
+      else show"Upload of $size exceeds max size of $maxSize"
     def toHttpResponse[F[_]](httpVersion: HttpVersion): Response[F] =
       Response(Status.PayloadTooLarge, httpVersion)
         .withEntity(show"The upload of $size is too large, exceeding $maxSize.")(

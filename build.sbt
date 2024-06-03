@@ -99,8 +99,9 @@ val server = project
     libraryDependencies ++=
       Dependencies.http4sCore ++
         Dependencies.http4sDsl,
-    libraryDependencies ++= (Dependencies.http4sEmber ++ Dependencies.scribe)
-      .map(_ % Test),
+    libraryDependencies ++= (Dependencies.http4sEmber ++
+      Dependencies.http4sClient ++
+      Dependencies.scribe).map(_ % Test),
     reStart / fullClasspath := (Test / fullClasspath).value,
     reStart / mainClass := Some("http4stus.server.ServerTest")
   )

@@ -1,17 +1,18 @@
 package http4stus.fs
 
+import java.security.MessageDigest
+
 import cats.Functor
+import cats.data.NonEmptyList
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.io.file.{Files, Path}
+import fs2.io.file.{Flag, Flags}
 
 import http4stus.data.*
-import scodec.bits.ByteVector
-import java.security.MessageDigest
-import fs2.io.file.{Flag, Flags}
-import cats.data.NonEmptyList
 import org.http4s.Uri
+import scodec.bits.ByteVector
 
 final private case class UploadEntry(
     id: UploadId,

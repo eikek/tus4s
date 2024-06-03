@@ -1,6 +1,7 @@
 package http4stus.data
 
 import fs2.Stream
+
 import http4stus.data.MetadataMap.Key
 import org.http4s.MediaType
 

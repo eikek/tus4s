@@ -1,10 +1,10 @@
 package http4stus.server
 
-import cats.Applicative
-import cats.Monad
+import cats.MonadThrow
 import cats.data.EitherT
 import cats.effect.Sync
 import cats.syntax.all.*
+import cats.{Applicative, ApplicativeThrow}
 import fs2.Stream
 
 import http4stus.data.*
@@ -15,7 +15,9 @@ import org.http4s.headers.`Content-Length`
 import org.typelevel.ci.CIString
 
 object TusCodec:
-  def forPatch[F[_]: Applicative](cfg: TusConfig): EntityDecoder[F, UploadRequest[F]] =
+  def forPatch[F[_]: ApplicativeThrow](
+      cfg: TusConfig
+  ): EntityDecoder[F, UploadRequest[F]] =
     EntityDecoder.decodeBy(Headers.offsetOctetStream) { req =>
       val offset = req.headers
         .get[UploadOffset]
@@ -45,12 +47,14 @@ object TusCodec:
           isPartial = part,
           meta = meta,
           hasContent = true,
-          data = data
+          data = cfg.maxSize match
+            case None     => data
+            case Some(sz) => LimitStream(data, sz)
         )
       )
     }
 
-  def forCreation[F[_]: Monad](
+  def forCreation[F[_]: MonadThrow](
       cfg: TusConfig,
       creation: Extension.Creation
   ): EntityDecoder[F, UploadRequest[F]] =
@@ -149,7 +153,7 @@ object TusCodec:
         )
       )
 
-  private def withUpload[F[_]: Monad](
+  private def withUpload[F[_]: MonadThrow](
       cfg: TusConfig,
       creation: Extension.Creation
   ): EntityDecoder[F, UploadRequest[F]] =

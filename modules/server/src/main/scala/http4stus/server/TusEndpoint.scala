@@ -9,9 +9,9 @@ import http4stus.protocol.*
 import http4stus.protocol.headers.*
 import org.http4s.*
 import org.http4s.headers.Location
+import org.http4s.headers.*
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
-import org.http4s.headers.*
 
 final class TusEndpoint[F[_]: Sync](
     tus: TusProtocol[F],
@@ -19,6 +19,8 @@ final class TusEndpoint[F[_]: Sync](
     baseUri: Option[Uri]
 ) extends Endpoint[F]
     with Http4sTusDsl[F]:
+
+  val config: TusConfig = tus.config
 
   def routes: HttpRoutes[F] = HttpRoutes.of {
     case HEAD -> Root / UploadId(id)        => head(id)

@@ -28,6 +28,10 @@ object Dependencies {
     "org.http4s" %% "http4s-ember-server" % V.http4s
   )
 
+  val http4sClient = Seq(
+    "org.http4s" %% "http4s-client" % V.http4s
+  )
+
   val munit = Seq(
     "org.scalameta" %% "munit" % V.munit,
     "org.scalameta" %% "munit-scalacheck" % V.munit,

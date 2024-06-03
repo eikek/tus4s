@@ -1,7 +1,7 @@
 package http4stus.protocol.headers
 
-import org.typelevel.ci.CIString
 import org.http4s.*
+import org.typelevel.ci.CIString
 
 final case class Expect(expectation: Expect.Expectation):
   def render: String = expectation.value

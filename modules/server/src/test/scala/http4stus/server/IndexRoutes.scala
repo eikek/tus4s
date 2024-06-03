@@ -1,10 +1,10 @@
 package http4stus.server
 
 import cats.effect.*
-import org.http4s.dsl.Http4sDsl
-import org.http4s.{MediaType, HttpRoutes}
-import org.http4s.headers.`Content-Type`
 
+import org.http4s.dsl.Http4sDsl
+import org.http4s.headers.`Content-Type`
+import org.http4s.{HttpRoutes, MediaType}
 
 object IndexRoutes extends Http4sDsl[IO]:
 

@@ -12,5 +12,7 @@ final case class UploadOffset(offset: ByteSize)
 object UploadOffset:
   val name: CIString = CIString("Upload-Offset")
 
+  val zero: UploadOffset = UploadOffset(ByteSize.zero)
+
   given Header[UploadOffset, Header.Single] =
     HeaderUtil.byteSizeHeader(name, _.offset, apply)

@@ -48,6 +48,14 @@ object Extension:
         case c: Extension.Checksum => Some(c)
         case c                     => findChecksum(exts - c)
 
+  @annotation.tailrec
+  def hasTermination(exts: Set[Extension]): Boolean =
+    if (exts.isEmpty) false
+    else
+      exts.head match
+        case Termination => true
+        case c           => hasTermination(exts - c)
+
   def includesAlgorithm(exts: Set[Extension], algo: ChecksumAlgorithm): Boolean =
     findChecksum(exts).exists(_.algorithms.toList.contains(algo))
 

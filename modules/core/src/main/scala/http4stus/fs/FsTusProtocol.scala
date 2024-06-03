@@ -50,7 +50,8 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
             else
               e.writeChunk(chunk.data).flatMap { temp =>
                 val newState = state.copy(
-                  offset = temp.length + state.offset
+                  offset = temp.length + state.offset,
+                  length = state.length.orElse(chunk.uploadLength)
                 )
                 val checksumMismatch =
                   OptionT

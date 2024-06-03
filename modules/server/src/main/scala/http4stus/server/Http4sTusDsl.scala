@@ -15,7 +15,7 @@ import http4stus.protocol.headers.*
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 
-private trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
+private[server] trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
   val checksumMismatch: Status = Status.fromInt(460).fold(throw _, identity)
 
   def requireContentType(req: Request[F], mt: MediaType)(
