@@ -351,8 +351,55 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .PATCH("hello-".getBytes(), uri1)
         .withContentType(Headers.contentTypeOffsetOctetStream)
         .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(UploadConcat(ConcatType.Partial))
         .putHeaders(TusResumable.V1_0_0)
-        // miss partial
+      _ <- client.run(uploadReq).use(assertStatus(Status.NoContent))
+      _ <- client
+        .run(Method.HEAD(uri1))
+        .map { r =>
+          assertEquals(
+            r.headers.get[UploadConcat],
+            Some(UploadConcat(ConcatType.Partial))
+          )
+        }
+        .use_
+
+      uploadReq2 = Method
+        .PATCH("world".getBytes(), uri2)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadConcat(ConcatType.Partial))
+        .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq2).use(assertStatus(Status.NoContent))
+
+      concat = Method
+        .POST(baseUri)
+        .putHeaders(UploadConcat(ConcatType.Final(NonEmptyList.of(uri1, uri2))))
+      uri <- client.run(concat).use { r =>
+        assertEquals(r.status, Status.Created)
+        IO(r.headers.get[Location].get.uri)
+      }
+      _ <- checkUpload(client)(
+        uri,
+        MetadataMap.empty,
+        ByteSize.bytes(11),
+        ByteSize.bytes(11),
+        false
+      )
+    yield ()
+
+  test("concat extension, but no partial uploads"):
+    assume(Extension.hasConcat(config.extensions))
+    for
+      client <- makeClient
+      uri1 <- createUpload(client, ByteSize.bytes(6))
+      uri2 <- createUpload(client, ByteSize.bytes(5))
+
+      uploadReq = Method
+        .PATCH("hello-".getBytes(), uri1)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(TusResumable.V1_0_0)
       _ <- client.run(uploadReq).use(assertStatus(Status.NoContent))
 
       uploadReq2 = Method
@@ -360,12 +407,12 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .withContentType(Headers.contentTypeOffsetOctetStream)
         .putHeaders(UploadOffset(ByteSize.zero))
         .putHeaders(TusResumable.V1_0_0)
-        //miss partial
       _ <- client.run(uploadReq2).use(assertStatus(Status.NoContent))
 
-      concat = Method.POST(baseUri)
+      concat = Method
+        .POST(baseUri)
         .putHeaders(UploadConcat(ConcatType.Final(NonEmptyList.of(uri1, uri2))))
-      _ <- client.run(concat).use(IO.println)
+      _ <- client.run(concat).use(assertStatus(Status.UnprocessableEntity))
     yield ()
 
   def createUpload(

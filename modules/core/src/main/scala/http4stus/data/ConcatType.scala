@@ -13,6 +13,7 @@ enum ConcatType:
   case Partial
 
   def isFinal: Boolean = this != Partial
+  def isPartial: Boolean = this == Partial
 
 object ConcatType:
   def fromString(s: String): ParseResult[ConcatType] =
@@ -41,9 +42,9 @@ object ConcatType:
           .traverse(UploadId.fromString)
 
       def isDescendent(uri: Uri): Boolean =
-        baseUri.exists(base =>
+        baseUri.forall { base =>
           uri.authority == base.authority && uri.path.startsWith(base.path)
-        )
+        }
 
       self.partials.toList
         .flatTraverse { uri =>

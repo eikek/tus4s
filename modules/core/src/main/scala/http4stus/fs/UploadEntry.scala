@@ -13,6 +13,7 @@ import fs2.io.file.{Flag, Flags}
 import http4stus.data.*
 import org.http4s.Uri
 import scodec.bits.ByteVector
+import cats.data.OptionT
 
 final private case class UploadEntry(
     id: UploadId,
@@ -74,6 +75,12 @@ private object UploadEntry:
       case false => None
     }
 
+  def findWithState[F[_]: Files: Sync](
+      dir: Path,
+      id: UploadId
+  ): F[Option[(UploadEntry, UploadState)]] =
+    OptionT(find(dir, id)).semiflatMap(e => e.readState.map(s => (e, s))).value
+
   def create[F[_]: Files: Functor](dir: Path, id: UploadId): F[UploadEntry] =
     val entryDir = dir / id.value
     Files[F].createDirectories(entryDir).as(UploadEntry(id, entryDir))
@@ -105,5 +112,5 @@ private object UploadEntry:
             .drain
         )
         .compile
-        .drain >> state
+        .drain >> state.flatTap(targetEntry.writeState)
     }

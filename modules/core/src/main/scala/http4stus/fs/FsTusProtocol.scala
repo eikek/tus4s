@@ -61,7 +61,8 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
       e.writeChunk(chunk.data).flatMap { temp =>
         val newState = state.copy(
           offset = temp.length + state.offset,
-          length = state.length.orElse(chunk.uploadLength)
+          length = state.length.orElse(chunk.uploadLength),
+          concatType = Option.when(chunk.isPartial)(ConcatType.Partial)
         )
         val checksumMismatch =
           OptionT
@@ -126,9 +127,14 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
     UploadEntry.delete(dir, id)
 
   def concat(req: ConcatRequest): F[ConcatResult] =
-    val entries = req.ids
-      .traverse(id => UploadEntry.find(dir, id).map(_.toRight(id)))
-      .map(_.toList.partitionMap(identity))
+    val entries = req.ids.toList
+      .traverse(id =>
+        UploadEntry.findWithState[F](dir, id).map {
+          case Some((entry, state)) if state.isPartial => Right(entry)
+          case _                                       => Left(id)
+        }
+      )
+      .map(_.partitionMap(identity))
     entries.flatMap {
       case (Nil, parts) =>
         UploadEntry

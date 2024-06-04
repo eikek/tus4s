@@ -9,3 +9,4 @@ final case class UploadState(
 ):
   def isDone: Boolean = length.exists(_ == offset)
   def isFinal: Boolean = concatType.exists(_.isFinal)
+  def isPartial: Boolean = concatType.exists(_.isPartial)
