@@ -11,12 +11,13 @@ import http4stus.data.ByteSize
 import http4stus.data.ConcatType
 import http4stus.data.Extension
 import http4stus.data.MetadataMap
+import http4stus.protocol.Headers
 import http4stus.protocol.headers.*
 import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 
 private[server] trait Http4sTusDsl[F[_]] extends Http4sDsl[F]:
-  val checksumMismatch: Status = Status.fromInt(460).fold(throw _, identity)
+  val checksumMismatch: Status = Headers.checksumMismatch
 
   def requireContentType(req: Request[F], mt: MediaType)(
       body: => F[Response[F]]

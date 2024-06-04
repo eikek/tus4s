@@ -10,6 +10,7 @@ import http4stus.protocol.TusConfig
 import http4stus.protocol.headers.TusExtension
 import http4stus.protocol.headers.TusResumable
 import http4stus.protocol.headers.TusVersion
+import http4stus.protocol.headers.UploadChecksum
 import http4stus.protocol.headers.UploadDeferLength
 import http4stus.protocol.headers.UploadLength
 import http4stus.protocol.headers.UploadMetadata
@@ -22,6 +23,7 @@ import org.http4s.headers.Location
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
 import scodec.bits.ByteVector
+import http4stus.protocol.headers.UploadConcat
 
 abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
     extends CatsEffectSuite:
@@ -117,14 +119,7 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
     for
       client <- makeClient
       meta = MetadataMap.empty.withFilename("test.txt")
-      create = Method
-        .POST(baseUri)
-        .putHeaders(UploadMetadata(meta))
-        .putHeaders(UploadLength(ByteSize.bytes(11)))
-      uploadUri <- client.run(create).use { r =>
-        assertEquals(r.status, Status.Created)
-        IO(r.headers.get[Location].get.uri)
-      }
+      uploadUri <- createUpload(client, ByteSize.bytes(11), meta)
 
       uploadReq1 = Method
         .PATCH("hello".getBytes, uploadUri)
@@ -173,17 +168,38 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
       )
     yield ()
 
-  test("termination"):
-    assume(Extension.hasTermination(config.extensions))
+  test("create-with-upload"):
+    assume(
+      Extension
+        .findCreation(config.extensions)
+        .exists(_.options.contains(CreationOptions.WithUpload))
+    )
     for
       client <- makeClient
       create = Method
-        .POST(baseUri)
+        .POST("hello world".getBytes(), baseUri)
         .putHeaders(UploadLength(ByteSize.bytes(11)))
+        .putHeaders(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset.zero)
+        .putHeaders(TusResumable.V1_0_0)
       uri <- client.run(create).use { r =>
         assertEquals(r.status, Status.Created)
         IO(r.headers.get[Location].get.uri)
       }
+      _ <- checkUpload(client)(
+        uri,
+        MetadataMap.empty,
+        ByteSize.bytes(11),
+        ByteSize.bytes(11),
+        false
+      )
+    yield ()
+
+  test("termination"):
+    assume(Extension.hasTermination(config.extensions))
+    for
+      client <- makeClient
+      uri <- createUpload(client, ByteSize.bytes(11))
       uploadReq = Method
         .PATCH("hello-world".getBytes, uri)
         .withContentType(Headers.contentTypeOffsetOctetStream)
@@ -195,6 +211,41 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
       delete = Method.DELETE(uri).putHeaders(TusResumable.V1_0_0)
       _ <- client.run(delete).use(assertStatus(Status.NoContent))
       _ <- client.run(Method.HEAD(uri)).use(assertStatus(Status.NotFound))
+    yield ()
+
+  test("checksum match"):
+    val ext = Extension.findChecksum(config.extensions)
+    assume(ext.isDefined)
+    val alg = ext.get.algorithms.head
+    for
+      client <- makeClient
+      uri <- createUpload(client, ByteSize.bytes(11))
+      cs = ByteVector.view("hello-world".getBytes).digest(alg.name)
+      uploadReq = Method
+        .PATCH("hello-world".getBytes, uri)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset.zero)
+        .putHeaders(UploadLength(ByteSize.bytes(11)))
+        .putHeaders(UploadChecksum(alg, cs))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq).use(assertStatus(Status.NoContent))
+    yield ()
+
+  test("checksum mismatch"):
+    val ext = Extension.findChecksum(config.extensions)
+    assume(ext.isDefined)
+    val alg = ext.get.algorithms.head
+    for
+      client <- makeClient
+      uri <- createUpload(client, ByteSize.bytes(11))
+      uploadReq = Method
+        .PATCH("hello-world".getBytes, uri)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset.zero)
+        .putHeaders(UploadLength(ByteSize.bytes(11)))
+        .putHeaders(UploadChecksum(alg, ByteVector.fromValidHex("caffee")))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq).use(assertStatus(Headers.checksumMismatch))
     yield ()
 
   test("max upload size"):
@@ -245,6 +296,96 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .use_
     yield ()
 
+  test("offset mismatch"):
+    for
+      client <- makeClient
+      uri <- createUpload(client, ByteSize.bytes(11))
+      uploadReq = Method
+        .PATCH("hello".getBytes(), uri)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.bytes(4)))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq).use(assertStatus(Status.Conflict))
+    yield ()
+
+  test("upload length mismatch"):
+    for
+      client <- makeClient
+      uri <- createUpload(client, ByteSize.bytes(11))
+      uploadReq = Method
+        .PATCH("hello".getBytes(), uri)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(UploadLength(ByteSize.bytes(20)))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq).use(assertStatus(Status.Conflict))
+    yield ()
+
+  test("upload done"):
+    for
+      client <- makeClient
+      uri <- createUpload(client, ByteSize.bytes(11))
+      uploadReq = Method
+        .PATCH("hello-world".getBytes(), uri)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq).use(assertStatus(Status.NoContent))
+
+      uploadReq2 = Method
+        .PATCH("hello-world".getBytes(), uri)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.bytes(11)))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq2).use(assertStatus(Status.Conflict))
+    yield ()
+
+  test("concat extension"):
+    assume(Extension.hasConcat(config.extensions))
+    for
+      client <- makeClient
+      uri1 <- createUpload(client, ByteSize.bytes(6))
+      uri2 <- createUpload(client, ByteSize.bytes(5))
+
+      uploadReq = Method
+        .PATCH("hello-".getBytes(), uri1)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(TusResumable.V1_0_0)
+        // miss partial
+      _ <- client.run(uploadReq).use(assertStatus(Status.NoContent))
+
+      uploadReq2 = Method
+        .PATCH("world".getBytes(), uri2)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(TusResumable.V1_0_0)
+        //miss partial
+      _ <- client.run(uploadReq2).use(assertStatus(Status.NoContent))
+
+      concat = Method.POST(baseUri)
+        .putHeaders(UploadConcat(ConcatType.Final(NonEmptyList.of(uri1, uri2))))
+      _ <- client.run(concat).use(IO.println)
+    yield ()
+
+  def createUpload(
+      client: Client[IO],
+      size: ByteSize,
+      meta: MetadataMap = MetadataMap.empty
+  ) =
+    val req = Method
+      .POST(baseUri)
+      .putHeaders(UploadLength(size))
+      .putHeaders(TusResumable.V1_0_0)
+    val create =
+      if (meta.isEmpty) req
+      else req.putHeaders(UploadMetadata(meta))
+    for uri <- client.run(create).use { r =>
+        assertEquals(r.status, Status.Created)
+        IO(r.headers.get[Location].get.uri)
+      }
+    yield uri
+
   def checkUpload(
       client: Client[IO]
   )(uri: Uri, meta: MetadataMap, offset: ByteSize, len: ByteSize, deferLength: Boolean) =
@@ -252,7 +393,10 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
       .run(Method.HEAD(uri))
       .map { r =>
         assertEquals(r.status, Status.NoContent)
-        assertEquals(r.headers.get[UploadMetadata], Some(UploadMetadata(meta)))
+        assertEquals(
+          r.headers.get[UploadMetadata],
+          if (meta.isEmpty) None else Some(UploadMetadata(meta))
+        )
         assertEquals(
           r.headers.get[`Cache-Control`].map(_.values),
           Some(NonEmptyList.of(CacheDirective.`no-store`))

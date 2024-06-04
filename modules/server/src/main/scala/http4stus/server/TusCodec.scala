@@ -94,7 +94,7 @@ object TusCodec:
         case None =>
           error(TusDecodeFailure.UnsupportedExtension(Extension.Creation(Set.empty)))
     val d2 = forConcatFinal[F](cfg, baseUri).map(_.asRight[UploadRequest[F]])
-    d1.orElse(d2)
+    d1.orElse(d2)// doesn't work because it dispatches on mediatype ...
 
   private def validateChecksum(
       cfg: TusConfig,

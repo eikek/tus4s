@@ -41,34 +41,39 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
         case None => ReceiveResult.NotFound.pure[F]
         case Some(e) =>
           e.readState[F].flatMap { state =>
-            if (state.offset != chunk.offset)
-              ReceiveResult.OffsetMismatch(state.offset).pure[F]
-            else if (state.length.exists(l1 => chunk.uploadLength.exists(l2 => l1 != l2)))
-              ReceiveResult.UploadLengthMismatch.pure[F]
-            else if (state.isDone) ReceiveResult.UploadDone.pure[F]
-            else if (state.isFinal) ReceiveResult.UploadIsFinal.pure[F]
-            else
-              e.writeChunk(chunk.data).flatMap { temp =>
-                val newState = state.copy(
-                  offset = temp.length + state.offset,
-                  length = state.length.orElse(chunk.uploadLength)
-                )
-                val checksumMismatch =
-                  OptionT
-                    .fromOption[F](chunk.checksum)
-                    .semiflatMap(uc =>
-                      e.createChecksum(temp, uc.algorithm).map(_ == uc.checksum)
-                    )
-                    .subflatMap(ok => Option.when(!ok)(ReceiveResult.ChecksumMismatch))
-
-                checksumMismatch.getOrElseF {
-                  (e.append(temp, newState) >> e.writeState(newState))
-                    .as(ReceiveResult.Success(newState.offset, None))
-                }
-              }
+            receiveData(e, state, chunk)
           }
       }
     }
+
+  private def receiveData(
+      e: UploadEntry,
+      state: UploadState,
+      chunk: UploadRequest[F]
+  ): F[ReceiveResult] =
+    if (state.offset != chunk.offset)
+      ReceiveResult.OffsetMismatch(state.offset).pure[F]
+    else if (state.length.exists(l1 => chunk.uploadLength.exists(l2 => l1 != l2)))
+      ReceiveResult.UploadLengthMismatch.pure[F]
+    else if (state.isDone) ReceiveResult.UploadDone.pure[F]
+    else if (state.isFinal) ReceiveResult.UploadIsFinal.pure[F]
+    else
+      e.writeChunk(chunk.data).flatMap { temp =>
+        val newState = state.copy(
+          offset = temp.length + state.offset,
+          length = state.length.orElse(chunk.uploadLength)
+        )
+        val checksumMismatch =
+          OptionT
+            .fromOption[F](chunk.checksum)
+            .semiflatMap(uc => e.createChecksum(temp, uc.algorithm).map(_ == uc.checksum))
+            .subflatMap(ok => Option.when(!ok)(ReceiveResult.ChecksumMismatch))
+
+        checksumMismatch.getOrElseF {
+          (e.append(temp, newState) >> e.writeState(newState))
+            .as(ReceiveResult.Success(newState.offset, None))
+        }
+      }
 
   private def makeNewEntry =
     UploadId.randomUUID[F].flatMap(UploadEntry.create(dir, _))

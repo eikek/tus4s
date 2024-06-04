@@ -32,6 +32,7 @@ final case class MetadataMap(data: Map[Key, ByteVector]):
   def exists(key: Key): Boolean = data.exists(_._1 == key)
 
   def isEmpty: Boolean = data.isEmpty
+  def nonEmpty: Boolean = !isEmpty
 
   def ++(other: MetadataMap): MetadataMap = MetadataMap(data ++ other.data)
 
