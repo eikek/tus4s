@@ -1,7 +1,7 @@
 import Dependencies.V
 import com.github.sbt.git.SbtGit.GitKeys._
 
-addCommandAlias("ci", "make; lint; test")
+addCommandAlias("ci", "Test/compile; lint; test; publishLocal")
 addCommandAlias(
   "lint",
   "scalafmtSbtCheck; scalafmtCheckAll; Compile/scalafix --check; Test/scalafix --check"
