@@ -17,16 +17,19 @@ import org.http4s.server.middleware.Logger
 object ServerTest extends IOApp:
   val tusBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
 
+  def tusEndpoint(backend: TusProtocol[IO]) =
+    TusEndpointBuilder[IO](backend)
+      .withBaseUri(uri"/files")
+      .withRetrieve(Retrieve.simpleGet[IO])
+      .build
+      .routes
+
   def createApp(backend: TusProtocol[IO]) =
     ErrorHandling.Recover.messageFailure(
       Logger.httpApp(true, false)(
         Router(
           "/" -> IndexRoutes.routes,
-          "files" -> TusEndpointBuilder[IO](backend)
-            .withBaseUri(uri"/files")
-            .withRetrieve(Retrieve.simpleGet[IO])
-            .build
-            .routes
+          "files" -> tusEndpoint(backend)
         ).orNotFound
       )
     )
@@ -36,7 +39,10 @@ object ServerTest extends IOApp:
   def run(args: List[String]): IO[ExitCode] =
     for
       backend <- tusBackend
-      app = createApp(backend)
+      app = Router(
+        "/" -> IndexRoutes.routes,
+        "files" -> tusEndpoint(backend)
+      ).orNotFound
       _ <- EmberServerBuilder
         .default[IO]
         .withHost(host"0.0.0.0")

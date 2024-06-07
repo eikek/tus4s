@@ -107,6 +107,27 @@ val server = project
   )
   .dependsOn(core)
 
+val updateReadme = inputKey[Unit]("Update readme")
+lazy val readme = project
+  .in(file("modules/readme"))
+  .enablePlugins(MdocPlugin)
+  .settings(sharedSettings)
+  .settings(scalafixSettings)
+  .settings(noPublish)
+  .settings(
+    name := "http4s-tus-readme",
+    libraryDependencies ++= Dependencies.http4sEmber,
+    mdocIn := (LocalRootProject / baseDirectory).value / "docs" / "readme.md",
+    mdocOut := (LocalRootProject / baseDirectory).value / "README.md",
+    fork := true,
+    updateReadme := {
+      mdoc.evaluated
+      ()
+    }
+  )
+  .dependsOn(core, server)
+
+
 val root = project
   .in(file("."))
   .disablePlugins(RevolverPlugin)
