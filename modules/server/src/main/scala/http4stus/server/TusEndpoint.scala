@@ -48,7 +48,7 @@ final class TusEndpoint[F[_]: Sync](
         .withMaxSize(tus.config.maxSize)
         .withExtensions(tus.config.extensions)
         .withTusResumable
-    case DELETE -> Root / UploadId(id) =>
+    case DELETE -> Root / UploadId(id) if Extension.hasTermination(config.extensions) =>
       delete(id)
   }
 
@@ -68,14 +68,16 @@ final class TusEndpoint[F[_]: Sync](
     }
 
   private def concatenate(req: ConcatRequest): F[Response[F]] =
-    tus.concat(req).flatMap {
-      case ConcatResult.Success(id) =>
-        val base = baseUri.getOrElse(uri"")
-        Created.headers(Location(base / id)).withTusResumable
+    if (!Extension.hasConcat(config.extensions)) NotFound()
+    else
+      tus.concat(req).flatMap {
+        case ConcatResult.Success(id) =>
+          val base = baseUri.getOrElse(uri"")
+          Created.headers(Location(base / id)).withTusResumable
 
-      case ConcatResult.PartsNotFound(ids) =>
-        UnprocessableEntity(s"Some partials could not be found: $ids").withTusResumable
-    }
+        case ConcatResult.PartsNotFound(ids) =>
+          UnprocessableEntity(s"Some partials could not be found: $ids").withTusResumable
+      }
 
   private def head(id: UploadId): F[Response[F]] =
     tus.find(id).flatMap {

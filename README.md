@@ -27,10 +27,10 @@ val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-te
 // tusBackend: IO[TusProtocol[[A >: Nothing <: Any] => IO[A]]] = Map(
 //   ioe = Blocking(
 //     hint = Blocking,
-//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2659/0x000000080189ddc0@41854000,
+//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2659/0x000000080189d940@781ebe48,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = http4stus.fs.FsTusProtocol$$$Lambda$2660/0x000000080189e968@56e7f92f,
+//   f = http4stus.fs.FsTusProtocol$$$Lambda$2660/0x000000080189e4e8@2a94a702,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```
@@ -50,7 +50,10 @@ def tusEndpoint(backend: TusProtocol[IO]) =
 ```
 
 The optional `withRetrieve` allows to inject code to also get a file
-back.
+back on the `GET <base-uri>` route. The configuration for the tus
+protocol (i.e. which extensions are enabled) is a feature of the
+backend (here `FsTusBackend`, look at it's constructor for what is
+available).
 
 Finally, putting all together in a server:
 
@@ -76,16 +79,16 @@ yield ExitCode.Success
 //     ioe = Map(
 //       ioe = Blocking(
 //         hint = Blocking,
-//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2659/0x000000080189ddc0@41854000,
+//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2659/0x000000080189d940@781ebe48,
 //         event = cats.effect.tracing.TracingEvent$StackTrace
 //       ),
-//       f = http4stus.fs.FsTusProtocol$$$Lambda$2660/0x000000080189e968@56e7f92f,
+//       f = http4stus.fs.FsTusProtocol$$$Lambda$2660/0x000000080189e4e8@2a94a702,
 //       event = cats.effect.tracing.TracingEvent$StackTrace
 //     ),
-//     f = repl.MdocSession$MdocApp$$Lambda$2661/0x00000008018a0000@2265792c,
+//     f = repl.MdocSession$MdocApp$$Lambda$2661/0x00000008018a1000@21da6808,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = repl.MdocSession$MdocApp$$Lambda$2662/0x00000008018a03d0@5379839c,
+//   f = repl.MdocSession$MdocApp$$Lambda$2662/0x00000008018a13d0@3261b8bf,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```

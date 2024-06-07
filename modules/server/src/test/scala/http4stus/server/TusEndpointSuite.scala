@@ -11,6 +11,7 @@ import http4stus.protocol.headers.TusExtension
 import http4stus.protocol.headers.TusResumable
 import http4stus.protocol.headers.TusVersion
 import http4stus.protocol.headers.UploadChecksum
+import http4stus.protocol.headers.UploadConcat
 import http4stus.protocol.headers.UploadDeferLength
 import http4stus.protocol.headers.UploadLength
 import http4stus.protocol.headers.UploadMetadata
@@ -23,7 +24,6 @@ import org.http4s.headers.Location
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
 import scodec.bits.ByteVector
-import http4stus.protocol.headers.UploadConcat
 
 abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
     extends CatsEffectSuite:

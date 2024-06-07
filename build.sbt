@@ -127,7 +127,6 @@ lazy val readme = project
   )
   .dependsOn(core, server)
 
-
 val root = project
   .in(file("."))
   .disablePlugins(RevolverPlugin)

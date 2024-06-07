@@ -41,7 +41,10 @@ def tusEndpoint(backend: TusProtocol[IO]) =
 ```
 
 The optional `withRetrieve` allows to inject code to also get a file
-back.
+back on the `GET <base-uri>` route. The configuration for the tus
+protocol (i.e. which extensions are enabled) is a feature of the
+backend (here `FsTusBackend`, look at it's constructor for what is
+available).
 
 Finally, putting all together in a server:
 

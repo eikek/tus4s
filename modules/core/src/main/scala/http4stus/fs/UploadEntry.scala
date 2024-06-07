@@ -4,6 +4,7 @@ import java.security.MessageDigest
 
 import cats.Functor
 import cats.data.NonEmptyList
+import cats.data.OptionT
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.Stream
@@ -13,7 +14,6 @@ import fs2.io.file.{Flag, Flags}
 import http4stus.data.*
 import org.http4s.Uri
 import scodec.bits.ByteVector
-import cats.data.OptionT
 
 final private case class UploadEntry(
     id: UploadId,

@@ -10,16 +10,20 @@ import http4stus.data.*
 import http4stus.protocol.TusConfig
 import http4stus.protocol.TusProtocol
 
-final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize])
-    extends TusProtocol[F]:
+final class FsTusProtocol[F[_]: Sync: Files](
+    dir: Path,
+    maxSize: Option[ByteSize],
+    enableTermination: Boolean = true,
+    enableConcatenation: Boolean = true,
+    enableChecksum: Boolean = true
+) extends TusProtocol[F]:
   def config: TusConfig = TusConfig(
-    extensions = Set(
-      Extension.Creation(CreationOptions.all),
-      Extension.Checksum(ChecksumAlgorithm.all),
-      Extension.Termination,
-      Extension.Concatenation
-    ),
+    extensions = Set(Extension.Creation(CreationOptions.all)),
     maxSize = maxSize
+  ).addExtensions(
+    enableTermination -> Extension.Termination,
+    enableChecksum -> Extension.Checksum(ChecksumAlgorithm.all),
+    enableConcatenation -> Extension.Concatenation
   )
 
   def findFile(id: UploadId): F[Option[(UploadState, Path)]] =
@@ -147,6 +151,19 @@ final class FsTusProtocol[F[_]: Sync: Files](dir: Path, maxSize: Option[ByteSize
 object FsTusProtocol:
   def create[F[_]: Files: Sync](
       dir: Path,
-      maxSize: Option[ByteSize]
+      maxSize: Option[ByteSize],
+      enableTermination: Boolean = true,
+      enableConcatenation: Boolean = true,
+      enableChecksum: Boolean = true
   ): F[FsTusProtocol[F]] =
-    Files[F].createDirectories(dir).map(_ => new FsTusProtocol[F](dir, maxSize))
+    Files[F]
+      .createDirectories(dir)
+      .map(_ =>
+        new FsTusProtocol[F](
+          dir,
+          maxSize,
+          enableTermination,
+          enableConcatenation,
+          enableChecksum
+        )
+      )
