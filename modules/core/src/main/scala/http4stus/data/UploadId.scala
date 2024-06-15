@@ -9,7 +9,7 @@ import org.http4s.Uri
 opaque type UploadId = String
 
 object UploadId:
-  private[this] val validChars =
+  private val validChars =
     (('A' to 'Z') ++ ('a' to 'z') ++ ('0' to '9') ++ "-._~").toSet
 
   def fromString(s: String): Either[String, UploadId] =
