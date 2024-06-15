@@ -7,8 +7,9 @@ It is comprised of the following modules:
 
 - *core* depends on `http4s-core` (only) and provides the basic data
   structures for supporting the tus protocol
-- *server* depends on `http4s-dsl` to implement the tus protocol as a
-  `HttpRoutes` value that you can mount in your endpoint hierarchy
+- *routes* depends on `http4s-dsl` to implement the tus protocol as
+  server `HttpRoutes` value that you can mount in your endpoint
+  hierarchy
 
 ## Usage
 
@@ -24,13 +25,13 @@ import http4stus.fs.FsTusProtocol
 import http4stus.protocol.TusProtocol
 
 val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
-// tusBackend: IO[TusProtocol[[A >: Nothing <: Any] => IO[A]]] = Map(
+// tusBackend: IO[TusProtocol[[A >: Nothing <: Any] =>> IO[A]]] = Map(
 //   ioe = Blocking(
 //     hint = Blocking,
-//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2659/0x000000080189d940@781ebe48,
+//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2767/0x00000008018fc388@684ad81c,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = http4stus.fs.FsTusProtocol$$$Lambda$2660/0x000000080189e4e8@2a94a702,
+//   f = http4stus.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```
@@ -79,16 +80,16 @@ yield ExitCode.Success
 //     ioe = Map(
 //       ioe = Blocking(
 //         hint = Blocking,
-//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2659/0x000000080189d940@781ebe48,
+//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2767/0x00000008018fc388@684ad81c,
 //         event = cats.effect.tracing.TracingEvent$StackTrace
 //       ),
-//       f = http4stus.fs.FsTusProtocol$$$Lambda$2660/0x000000080189e4e8@2a94a702,
+//       f = http4stus.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
 //       event = cats.effect.tracing.TracingEvent$StackTrace
 //     ),
-//     f = repl.MdocSession$MdocApp$$Lambda$2661/0x00000008018a1000@21da6808,
+//     f = repl.MdocSession$MdocApp$$Lambda$2769/0x0000000801901000@4f8cdeb4,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = repl.MdocSession$MdocApp$$Lambda$2662/0x00000008018a13d0@3261b8bf,
+//   f = repl.MdocSession$MdocApp$$Lambda$2770/0x00000008019013d0@f853bb8,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```
