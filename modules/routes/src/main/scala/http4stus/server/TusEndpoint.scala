@@ -8,8 +8,8 @@ import http4stus.data.*
 import http4stus.protocol.*
 import http4stus.protocol.headers.*
 import org.http4s.*
-import org.http4s.headers.Location
 import org.http4s.headers.*
+import org.http4s.headers.Location
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
 
@@ -22,7 +22,7 @@ final class TusEndpoint[F[_]: Sync](
 
   val config: TusConfig = tus.config
 
-  def routes: HttpRoutes[F] = HttpRoutes.of {
+  def routes: HttpRoutes[F] = HttpRoutes.of:
     case HEAD -> Root / UploadId(id)        => head(id)
     case req @ PATCH -> Root / UploadId(id) => patch(id, req)
     case req @ GET -> Root / UploadId(id) if retrieve.isDefined =>
@@ -50,48 +50,52 @@ final class TusEndpoint[F[_]: Sync](
         .withTusResumable
     case DELETE -> Root / UploadId(id) if Extension.hasTermination(config.extensions) =>
       delete(id)
-  }
 
   private def create(hv: HttpVersion)(req: UploadRequest[F]): F[Response[F]] =
-    tus.create(req).flatMap {
-      case CreationResult.ChecksumMismatch =>
-        Response(checksumMismatch).pure[F]
-      case CreationResult.UploadTooLarge(maxSize, current) =>
-        TusDecodeFailure.MaxSizeExceeded(maxSize, current).toHttpResponse(hv).pure[F]
-      case CreationResult.Success(id, offset, expires) =>
-        val base = baseUri.getOrElse(uri"")
-        Created
-          .headers(Location(base / id))
-          .withOffset(offset)
-          .withExpires(expires)
-          .withTusResumable
-    }
+    tus
+      .create(req)
+      .flatMap:
+        case CreationResult.ChecksumMismatch =>
+          Response(checksumMismatch).pure[F]
+        case CreationResult.UploadTooLarge(maxSize, current) =>
+          TusDecodeFailure.MaxSizeExceeded(maxSize, current).toHttpResponse(hv).pure[F]
+        case CreationResult.Success(id, offset, expires) =>
+          val base = baseUri.getOrElse(uri"")
+          Created
+            .headers(Location(base / id))
+            .withOffset(offset)
+            .withExpires(expires)
+            .withTusResumable
 
   private def concatenate(req: ConcatRequest): F[Response[F]] =
     if (!Extension.hasConcat(config.extensions)) NotFound()
     else
-      tus.concat(req).flatMap {
-        case ConcatResult.Success(id) =>
-          val base = baseUri.getOrElse(uri"")
-          Created.headers(Location(base / id)).withTusResumable
+      tus
+        .concat(req)
+        .flatMap:
+          case ConcatResult.Success(id) =>
+            val base = baseUri.getOrElse(uri"")
+            Created.headers(Location(base / id)).withTusResumable
 
-        case ConcatResult.PartsNotFound(ids) =>
-          UnprocessableEntity(s"Some partials could not be found: $ids").withTusResumable
-      }
+          case ConcatResult.PartsNotFound(ids) =>
+            UnprocessableEntity(
+              s"Some partials could not be found: $ids"
+            ).withTusResumable
 
   private def head(id: UploadId): F[Response[F]] =
-    tus.find(id).flatMap {
-      case Some(upload) =>
-        NoContent
-          .headers(`Cache-Control`(CacheDirective.`no-store`))
-          .withOffset(upload.state.offset)
-          .withUploadLength(upload.state.length)
-          .withTusResumable
-          .withMetadata(upload.state.meta)
-          .withConcatType(upload.state.concatType)
+    tus
+      .find(id)
+      .flatMap:
+        case Some(upload) =>
+          NoContent
+            .headers(`Cache-Control`(CacheDirective.`no-store`))
+            .withOffset(upload.state.offset)
+            .withUploadLength(upload.state.length)
+            .withTusResumable
+            .withMetadata(upload.state.meta)
+            .withConcatType(upload.state.concatType)
 
-      case None => NotFound().withTusResumable
-    }
+        case None => NotFound().withTusResumable
 
   private def patch(id: UploadId, req: Request[F]): F[Response[F]] =
     for {
@@ -99,26 +103,27 @@ final class TusEndpoint[F[_]: Sync](
         Sync[F],
         TusCodec.forPatch[F](tus.config)
       )
-      resp <- tus.receive(id, input).flatMap {
-        case ReceiveResult.NotFound => NotFound().withTusResumable
-        case ReceiveResult.OffsetMismatch(current) =>
-          Conflict(s"Offset does not match, current is $current").withTusResumable
-        case ReceiveResult.UploadLengthMismatch =>
-          Conflict(s"Upload length has already been specified")
-        case ReceiveResult.UploadDone =>
-          Conflict(s"Upload is already done")
-        case ReceiveResult.ChecksumMismatch =>
-          Response(checksumMismatch).pure[F]
-        case ReceiveResult.UploadTooLarge(max, current) =>
-          TusDecodeFailure
-            .MaxSizeExceeded(max, current)
-            .toHttpResponse(req.httpVersion)
-            .pure[F]
-        case ReceiveResult.Success(newOffset, expires) =>
-          NoContent().withOffset(newOffset).withTusResumable.withExpires(expires)
-        case ReceiveResult.UploadIsFinal =>
-          Forbidden("Patch against a final upload").withTusResumable
-      }
+      resp <- tus
+        .receive(id, input)
+        .flatMap:
+          case ReceiveResult.NotFound => NotFound().withTusResumable
+          case ReceiveResult.OffsetMismatch(current) =>
+            Conflict(s"Offset does not match, current is $current").withTusResumable
+          case ReceiveResult.UploadLengthMismatch =>
+            Conflict(s"Upload length has already been specified")
+          case ReceiveResult.UploadDone =>
+            Conflict(s"Upload is already done")
+          case ReceiveResult.ChecksumMismatch =>
+            Response(checksumMismatch).pure[F]
+          case ReceiveResult.UploadTooLarge(max, current) =>
+            TusDecodeFailure
+              .MaxSizeExceeded(max, current)
+              .toHttpResponse(req.httpVersion)
+              .pure[F]
+          case ReceiveResult.Success(newOffset, expires) =>
+            NoContent().withOffset(newOffset).withTusResumable.withExpires(expires)
+          case ReceiveResult.UploadIsFinal =>
+            Forbidden("Patch against a final upload").withTusResumable
     } yield resp
 
   private def delete(id: UploadId): F[Response[F]] =

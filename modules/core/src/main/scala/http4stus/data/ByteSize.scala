@@ -43,14 +43,12 @@ object ByteSize:
   given Order[ByteSize] = Order.fromLessThan(_ < _)
   given Eq[ByteSize] = Eq.fromUniversalEquals
 
-  private object Parser {
+  private object Parser:
     val kb: P[Int] = P.charIn('k', 'K').as(1024)
     val mb: P[Int] = P.charIn('m', 'M').as(1024 * 1024)
     val unit: P[Int] = kb | mb
     val ws = P.charsWhile0(_.isWhitespace).void
 
-    val size = (Numbers.nonNegativeIntString.map(_.toLong) ~ (ws.with1 *> unit).?).map {
+    val size = (Numbers.nonNegativeIntString.map(_.toLong) ~ (ws.with1 *> unit).?).map:
       case (n, f) =>
         ByteSize.bytes((n * f.getOrElse(1)).toLong)
-    }
-  }

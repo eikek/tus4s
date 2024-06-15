@@ -96,14 +96,13 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .putHeaders(UploadLength(ByteSize.bytes(11)))
         .putHeaders(TusResumable.V1_0_0)
       _ <- client.run(uploadReq).use { r =>
-        IO {
+        IO:
           assertEquals(r.status, Status.NoContent)
           assertEquals(
             r.headers.get[UploadOffset].map(_.offset),
             Some(ByteSize.bytes(11))
           )
           assert(r.headers.get[TusResumable].isDefined)
-        }
       }
 
       _ <- checkUpload(client)(
@@ -127,14 +126,13 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .putHeaders(UploadOffset.zero)
         .putHeaders(TusResumable.V1_0_0)
       _ <- client.run(uploadReq1).use { r =>
-        IO {
+        IO:
           assertEquals(r.status, Status.NoContent)
           assertEquals(
             r.headers.get[UploadOffset].map(_.offset),
             Some(ByteSize.bytes(5))
           )
           assert(r.headers.get[TusResumable].isDefined)
-        }
       }
       _ <- checkUpload(client)(
         uploadUri,
@@ -150,14 +148,13 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .putHeaders(UploadOffset(ByteSize.bytes(5)))
         .putHeaders(TusResumable.V1_0_0)
       _ <- client.run(uploadReq2).use { r =>
-        IO {
+        IO:
           assertEquals(r.status, Status.NoContent)
           assertEquals(
             r.headers.get[UploadOffset].map(_.offset),
             Some(ByteSize.bytes(11))
           )
           assert(r.headers.get[TusResumable].isDefined)
-        }
       }
       _ <- checkUpload(client)(
         uploadUri,
@@ -260,14 +257,13 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
       _ <- client
         .run(c1)
         .attempt
-        .map {
+        .map:
           case Right(_) => fail("expected request to fail")
           case Left(err) =>
             assertEquals(
               err,
               TusDecodeFailure.MaxSizeExceeded(config.maxSize.get, ByteSize.mb(1))
             )
-        }
         .use_
 
       // ask for a small upload, but send too much data anyways
@@ -285,14 +281,13 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
       _ <- client
         .run(uploadReq)
         .attempt
-        .map {
+        .map:
           case Right(_) => fail("expected request to fail")
           case Left(err) =>
             assertEquals(
               err,
               TusDecodeFailure.MaxSizeExceeded(config.maxSize.get, config.maxSize.get)
             )
-        }
         .use_
     yield ()
 

@@ -18,7 +18,7 @@ enum ConcatType:
 object ConcatType:
   def fromString(s: String): ParseResult[ConcatType] =
     if ("partial".equalsIgnoreCase(s)) Right(Partial)
-    else {
+    else
       val (fn, uriStr) = s.span(_ != ';')
       if (!fn.equalsIgnoreCase("final"))
         Left(ParseFailure(s"Invalid concat type: $s", ""))
@@ -28,7 +28,6 @@ object ConcatType:
             Left(ParseFailure(s"No partial upload uris given with final concat: $s", ""))
           case Some(nel) =>
             nel.traverse(Uri.fromString).map(Final.apply)
-    }
 
   extension (self: Final)
     /** Extracts upload ids from the given uris. It uses the last segment of the uri path.

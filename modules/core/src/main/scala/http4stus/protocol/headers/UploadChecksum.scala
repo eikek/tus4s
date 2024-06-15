@@ -1,8 +1,8 @@
 package http4stus.protocol.headers
 
 import http4stus.data.*
-import org.http4s.Header
 import org.http4s.*
+import org.http4s.Header
 import org.typelevel.ci.CIString
 import scodec.bits.ByteVector
 

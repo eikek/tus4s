@@ -65,7 +65,7 @@ object Extension:
   def noConcat(exts: Set[Extension]): Boolean =
     !hasConcat(exts)
 
-  def fromStrings(str: NonEmptyList[String]): Either[String, NonEmptyList[Extension]] = {
+  def fromStrings(str: NonEmptyList[String]): Either[String, NonEmptyList[Extension]] =
     def loop(
         in: List[String],
         skipped: List[String],
@@ -92,4 +92,3 @@ object Extension:
               .map(_.toSet)
               .map(Creation.apply)
               .map(c => NonEmptyList(c, nel.toList.filterNot(_ == creation)))
-  }

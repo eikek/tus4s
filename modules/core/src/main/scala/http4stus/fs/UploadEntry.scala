@@ -23,15 +23,16 @@ final private case class UploadEntry(
   private[fs] val dataFile = dir / "file"
 
   def readState[F[_]: Files: Sync]: F[UploadState] =
-    Files[F].exists(stateFile).flatMap {
-      case false => UploadState(id).pure[F]
-      case true =>
-        Files[F]
-          .readUtf8Lines(stateFile)
-          .through(StateCodec.fromLines[F](id))
-          .compile
-          .lastOrError
-    }
+    Files[F]
+      .exists(stateFile)
+      .flatMap:
+        case false => UploadState(id).pure[F]
+        case true =>
+          Files[F]
+            .readUtf8Lines(stateFile)
+            .through(StateCodec.fromLines[F](id))
+            .compile
+            .lastOrError
 
   def writeChunk[F[_]: Files: Sync](data: Stream[F, Byte]): F[TempChunk] =
     UploadId.randomUUID[F].flatMap { id =>
@@ -70,10 +71,11 @@ private object UploadEntry:
 
   def find[F[_]: Files: Functor](dir: Path, id: UploadId): F[Option[UploadEntry]] =
     val entryDir = dir / id.value
-    Files[F].exists(entryDir).map {
-      case true  => Some(UploadEntry(id, entryDir))
-      case false => None
-    }
+    Files[F]
+      .exists(entryDir)
+      .map:
+        case true  => Some(UploadEntry(id, entryDir))
+        case false => None
 
   def findWithState[F[_]: Files: Sync](
       dir: Path,

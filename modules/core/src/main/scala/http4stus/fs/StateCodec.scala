@@ -28,7 +28,7 @@ object StateCodec:
   def fromLines[F[_]: MonadThrow](id: UploadId): Pipe[F, String, UploadState] =
     val init: Either[String, UploadState] = Right(UploadState(id))
     _.filter(!_.startsWith("#")).zipWithIndex
-      .fold(init) {
+      .fold(init):
         // Offset
         case (Right(state), (line, 0)) =>
           line.toByteSize.map(sz => state.copy(offset = sz))
@@ -58,7 +58,6 @@ object StateCodec:
 
         // ignore other lines
         case (state, _) => state
-      }
       .map(_.leftMap(new Exception(_)))
       .rethrow
 

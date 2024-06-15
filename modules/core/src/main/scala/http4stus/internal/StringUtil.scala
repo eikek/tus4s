@@ -8,19 +8,17 @@ import org.typelevel.ci.CIString
 private[http4stus] object StringUtil:
   def lowerFirst(s: String): String =
     if (s.isEmpty || s.charAt(0).isLower) s
-    else {
+    else
       val chars = s.toCharArray()
       chars(0) = chars(0).toLower
       new String(chars)
-    }
 
   def camelSplit(s: String): Vector[String] =
     def go(remain: String, result: Vector[String]): Vector[String] =
       if (remain.isEmpty) result
-      else {
+      else
         val (h, t) = remain.span(_.isLower)
         go(lowerFirst(t), if (h.isEmpty) result else result :+ h)
-      }
     go(s, Vector.empty)
 
   def camelToKebab(s: String): String =

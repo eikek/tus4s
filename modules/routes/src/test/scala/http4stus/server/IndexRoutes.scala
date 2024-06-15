@@ -8,13 +8,12 @@ import org.http4s.{HttpRoutes, MediaType}
 
 object IndexRoutes extends Http4sDsl[IO]:
 
-  def routes = HttpRoutes.of[IO] {
+  def routes = HttpRoutes.of[IO]:
     case GET -> Root =>
       Ok(indexHtml, `Content-Type`(MediaType.text.html))
 
     case GET -> Root / "tusc.js" =>
       Ok(tuscjs, `Content-Type`(MediaType.application.javascript))
-  }
 
   def indexHtml = """
   <!DOCTYPE html>

@@ -40,15 +40,15 @@ final class FsTusProtocol[F[_]: Sync: Files](
   def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] =
     whenExceedsMaxSize(chunk.uploadLength)(
       ReceiveResult.UploadTooLarge(_, _).pure[F]
-    ).getOrElse {
-      UploadEntry.find[F](dir, id).flatMap {
-        case None => ReceiveResult.NotFound.pure[F]
-        case Some(e) =>
-          e.readState[F].flatMap { state =>
-            receiveData(e, state, chunk)
-          }
-      }
-    }
+    ).getOrElse:
+      UploadEntry
+        .find[F](dir, id)
+        .flatMap:
+          case None => ReceiveResult.NotFound.pure[F]
+          case Some(e) =>
+            e.readState[F].flatMap { state =>
+              receiveData(e, state, chunk)
+            }
 
   private def receiveData(
       e: UploadEntry,
@@ -74,10 +74,9 @@ final class FsTusProtocol[F[_]: Sync: Files](
             .semiflatMap(uc => e.createChecksum(temp, uc.algorithm).map(_ == uc.checksum))
             .subflatMap(ok => Option.when(!ok)(ReceiveResult.ChecksumMismatch))
 
-        checksumMismatch.getOrElseF {
+        checksumMismatch.getOrElseF:
           (e.append(temp, newState) >> e.writeState(newState))
             .as(ReceiveResult.Success(newState.offset, None))
-        }
       }
 
   private def makeNewEntry =
@@ -95,7 +94,7 @@ final class FsTusProtocol[F[_]: Sync: Files](
   def create(req: UploadRequest[F]): F[CreationResult] =
     whenExceedsMaxSize(req.uploadLength)(
       CreationResult.UploadTooLarge(_, _).pure[F]
-    ).getOrElse {
+    ).getOrElse:
       makeNewEntry.flatMap { e =>
         val stateNoContent = UploadState(
           e.id,
@@ -116,16 +115,14 @@ final class FsTusProtocol[F[_]: Sync: Files](
                 )
                 .subflatMap(ok => Option.when(!ok)(CreationResult.ChecksumMismatch))
 
-            checksumMismatch.getOrElseF {
+            checksumMismatch.getOrElseF:
               (e.append(temp, state) >> e.writeState(state))
                 .as(CreationResult.Success(e.id, state.offset, None))
-            }
           }
         else
           e.writeState(stateNoContent)
             .as(CreationResult.Success(e.id, ByteSize.zero, None))
       }
-    }
 
   def delete(id: UploadId): F[Unit] =
     UploadEntry.delete(dir, id)
@@ -139,14 +136,13 @@ final class FsTusProtocol[F[_]: Sync: Files](
         }
       )
       .map(_.partitionMap(identity))
-    entries.flatMap {
+    entries.flatMap:
       case (Nil, parts) =>
         UploadEntry
           .copyAll(dir, parts, req.uris, req.meta)
           .map(state => ConcatResult.Success(state.id))
       case (missing, _) =>
         ConcatResult.PartsNotFound(NonEmptyList.fromListUnsafe(missing)).pure[F]
-    }
 
 object FsTusProtocol:
   def create[F[_]: Files: Sync](

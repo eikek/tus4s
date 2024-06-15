@@ -21,10 +21,9 @@ object Retrieve:
   def apply[F[_]](
       get: (TusProtocol[F], Request[F], UploadId) => F[Response[F]]
   ): Retrieve[F] =
-    new Retrieve[F] {
+    new Retrieve[F]:
       def find(tus: TusProtocol[F], req: Request[F], id: UploadId): F[Response[F]] =
         get(tus, req, id)
-    }
 
   def notFound[F[_]: Applicative]: Retrieve[F] =
     apply((_, req, _) => Response.notFoundFor(req))

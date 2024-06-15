@@ -25,10 +25,9 @@ class ExtensionTest extends FunSuite:
       Set(CreationOptions.WithUpload, CreationOptions.WithDeferredLength)
     ) -> Nel.of("creation", "creation-with-upload", "creation-defer-length")
   ).foreach { case (e, names) =>
-    test(s"name and fromString: $names") {
+    test(s"name and fromString: $names"):
       assertEquals(e.names, names)
       assertEquals(Extension.fromStrings(names), Right(Nel.of(e)))
-    }
   }
 
   test("fail fromStrings if remaining"):

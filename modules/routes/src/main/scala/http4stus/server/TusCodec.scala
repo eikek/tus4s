@@ -195,8 +195,7 @@ object TusCodec:
     }
 
   private def error[F[_]: Sync, T](t: Throwable): EntityDecoder[F, T] =
-    new EntityDecoder[F, T] {
+    new EntityDecoder[F, T]:
       override def decode(m: Media[F], strict: Boolean): DecodeResult[F, T] =
         DecodeResult(m.body.compile.drain *> Sync[F].raiseError(t))
       override def consumes: Set[MediaRange] = Set.empty
-    }
