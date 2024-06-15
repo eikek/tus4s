@@ -7,8 +7,9 @@ It is comprised of the following modules:
 
 - *core* depends on `http4s-core` (only) and provides the basic data
   structures for supporting the tus protocol
-- *server* depends on `http4s-dsl` to implement the tus protocol as a
-  `HttpRoutes` value that you can mount in your endpoint hierarchy
+- *routes* depends on `http4s-dsl` to implement the tus protocol as
+  server `HttpRoutes` value that you can mount in your endpoint
+  hierarchy
 
 ## Usage
 

@@ -88,13 +88,13 @@ val core = project
     libraryDependencies ++= Dependencies.http4sCore
   )
 
-val server = project
-  .in(file("modules/server"))
+val routes = project
+  .in(file("modules/routes"))
   .settings(sharedSettings)
   .settings(testSettings)
   .settings(scalafixSettings)
   .settings(
-    name := "http4s-tus-server",
+    name := "http4s-tus-routes",
     description := "Provides tus server routes",
     libraryDependencies ++=
       Dependencies.http4sCore ++
@@ -125,7 +125,7 @@ lazy val readme = project
       ()
     }
   )
-  .dependsOn(core, server)
+  .dependsOn(core, routes)
 
 val root = project
   .in(file("."))
@@ -135,4 +135,4 @@ val root = project
   .settings(
     name := "http4s-tus-root"
   )
-  .aggregate(core, server)
+  .aggregate(core, routes)
