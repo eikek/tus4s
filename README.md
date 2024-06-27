@@ -5,9 +5,10 @@ This project provides routes for http4s to enable file uploads via the
 
 It is comprised of the following modules:
 
-- *core* depends on `http4s-core` (only) and provides the basic data
-  structures for supporting the tus protocol
-- *routes* depends on `http4s-dsl` to implement the tus protocol as
+- *core* provides some core structures for supporting the tus
+  protocol
+- *fs* provides a backend for storing files on the local file system
+- *http4s* depends on `http4s-dsl` to implement the tus protocol as
   server `HttpRoutes` value that you can mount in your endpoint
   hierarchy
 
@@ -20,18 +21,18 @@ provided using a directory to store uploads.
 import cats.effect.*
 import fs2.io.file.Path
 
-import tus4s.data.ByteSize
+import tus4s.core.data.ByteSize
 import tus4s.fs.FsTusProtocol
-import tus4s.protocol.TusProtocol
+import tus4s.core.TusProtocol
 
 val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
 // tusBackend: IO[TusProtocol[[A >: Nothing <: Any] =>> IO[A]]] = Map(
 //   ioe = Blocking(
 //     hint = Blocking,
-//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2767/0x00000008018fc388@684ad81c,
+//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2788/0x00000008019098c8@160a3238,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = tus4s.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
+//   f = tus4s.fs.FsTusProtocol$$$Lambda$2789/0x000000080190a470@16d8ee2e,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```
@@ -39,7 +40,7 @@ val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-te
 With such a backend, the endpoint can be created:
 
 ```scala
-import tus4s.server.{Retrieve, TusEndpointBuilder}
+import tus4s.http4s.server.{Retrieve, TusEndpointBuilder}
 import org.http4s.implicits.*
 
 def tusEndpoint(backend: TusProtocol[IO]) =
@@ -80,16 +81,16 @@ yield ExitCode.Success
 //     ioe = Map(
 //       ioe = Blocking(
 //         hint = Blocking,
-//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2767/0x00000008018fc388@684ad81c,
+//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2788/0x00000008019098c8@160a3238,
 //         event = cats.effect.tracing.TracingEvent$StackTrace
 //       ),
-//       f = tus4s.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
+//       f = tus4s.fs.FsTusProtocol$$$Lambda$2789/0x000000080190a470@16d8ee2e,
 //       event = cats.effect.tracing.TracingEvent$StackTrace
 //     ),
-//     f = repl.MdocSession$MdocApp$$Lambda$2769/0x0000000801901000@4f8cdeb4,
+//     f = repl.MdocSession$MdocApp$$Lambda$2790/0x000000080190d000@4c8a893e,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = repl.MdocSession$MdocApp$$Lambda$2770/0x00000008019013d0@f853bb8,
+//   f = repl.MdocSession$MdocApp$$Lambda$2791/0x000000080190d3d0@2c56d4ab,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```

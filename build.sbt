@@ -84,17 +84,28 @@ val core = project
   .settings(scalafixSettings)
   .settings(
     name := "tus4s-core",
-    description := "Provides data structures to use with tus and http4s",
-    libraryDependencies ++= Dependencies.http4sCore
+    description := "Provides core data structures to use with tus",
+    libraryDependencies ++= Dependencies.fs2Core ++ Dependencies.catsParse
   )
 
-val routes = project
-  .in(file("modules/routes"))
+val fs = project.in(file("modules/fs"))
   .settings(sharedSettings)
   .settings(testSettings)
   .settings(scalafixSettings)
   .settings(
-    name := "tus4s-routes",
+    name := "tus4s-fs",
+    description := "Provides a backend for storing files in the local file system",
+    libraryDependencies ++= Dependencies.fs2Io ++ Dependencies.catsEffect
+  )
+  .dependsOn(core % "compile->compile;test->test")
+
+val http4s = project
+  .in(file("modules/http4s"))
+  .settings(sharedSettings)
+  .settings(testSettings)
+  .settings(scalafixSettings)
+  .settings(
+    name := "tus4s-http4s",
     description := "Provides tus server routes",
     libraryDependencies ++=
       Dependencies.http4sCore ++
@@ -103,9 +114,9 @@ val routes = project
       Dependencies.http4sClient ++
       Dependencies.scribe).map(_ % Test),
     reStart / fullClasspath := (Test / fullClasspath).value,
-    reStart / mainClass := Some("tus4s.server.ServerTest")
+    reStart / mainClass := Some("tus4s.http4s.server.ServerTest")
   )
-  .dependsOn(core)
+  .dependsOn(core, fs % "test->test")
 
 val updateReadme = inputKey[Unit]("Update readme")
 lazy val readme = project
@@ -125,7 +136,7 @@ lazy val readme = project
       ()
     }
   )
-  .dependsOn(core, routes)
+  .dependsOn(core, fs, http4s)
 
 val root = project
   .in(file("."))
@@ -135,4 +146,4 @@ val root = project
   .settings(
     name := "tus4s-root"
   )
-  .aggregate(core, routes)
+  .aggregate(core, fs, http4s)

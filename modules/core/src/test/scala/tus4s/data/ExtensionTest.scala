@@ -1,8 +1,8 @@
-package tus4s.data
+package tus4s.core.data
 
 import cats.data.NonEmptyList as Nel
 
-import tus4s.data.Extension.includesAlgorithm
+import tus4s.core.data.Extension.includesAlgorithm
 import munit.*
 
 class ExtensionTest extends FunSuite:

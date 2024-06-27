@@ -5,9 +5,10 @@ This project provides routes for http4s to enable file uploads via the
 
 It is comprised of the following modules:
 
-- *core* depends on `http4s-core` (only) and provides the basic data
-  structures for supporting the tus protocol
-- *routes* depends on `http4s-dsl` to implement the tus protocol as
+- *core* provides some core structures for supporting the tus
+  protocol
+- *fs* provides a backend for storing files on the local file system
+- *http4s* depends on `http4s-dsl` to implement the tus protocol as
   server `HttpRoutes` value that you can mount in your endpoint
   hierarchy
 
@@ -20,9 +21,9 @@ provided using a directory to store uploads.
 import cats.effect.*
 import fs2.io.file.Path
 
-import tus4s.data.ByteSize
+import tus4s.core.data.ByteSize
 import tus4s.fs.FsTusProtocol
-import tus4s.protocol.TusProtocol
+import tus4s.core.TusProtocol
 
 val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
 ```
@@ -30,7 +31,7 @@ val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-te
 With such a backend, the endpoint can be created:
 
 ```scala mdoc
-import tus4s.server.{Retrieve, TusEndpointBuilder}
+import tus4s.http4s.server.{Retrieve, TusEndpointBuilder}
 import org.http4s.implicits.*
 
 def tusEndpoint(backend: TusProtocol[IO]) =

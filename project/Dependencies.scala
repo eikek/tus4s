@@ -8,7 +8,35 @@ object Dependencies {
     val munit = "1.0.0"
     val munitCatsEffect = "2.0.0"
     val scribe = "3.15.0"
+    val cats = "2.12.0"
+    val catsEffect = "3.5.4"
+    val fs2 = "3.10.2"
+    val scodecBits = "1.2.0"
+    val catsParse = "1.0.0"
   }
+
+  val catsParse = Seq(
+    "org.typelevel" %% "cats-parse" % V.catsParse
+  )
+
+  val scodecBits = Seq(
+    "org.scodec" %% "scodec-bits" % V.scodecBits
+  )
+
+  val cats = Seq(
+    "org.typelevel" %% "cats-core" % V.cats
+  )
+
+  val catsEffect = Seq(
+    "org.typelevel" %% "cats-effect" % V.catsEffect
+  )
+
+  val fs2Core = Seq(
+    "co.fs2" %% "fs2-core" % V.fs2
+  )
+  val fs2Io = Seq(
+    "co.fs2" %% "fs2-io" % V.fs2
+  )
 
   val scribe = Seq(
     "com.outr" %% "scribe" % V.scribe,
