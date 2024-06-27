@@ -30,7 +30,7 @@ val sharedSettings = Seq(
   licenses := Seq(
     "Apache-2.0" -> url("https://spdx.org/licenses/Apache-2.0.html")
   ),
-  homepage := Some(url("https://github.com/eikek/http4s-tus")),
+  homepage := Some(url("https://github.com/eikek/tus4s")),
   versionScheme := Some("early-semver")
 ) ++ publishSettings
 
@@ -83,7 +83,7 @@ val core = project
   .settings(testSettings)
   .settings(scalafixSettings)
   .settings(
-    name := "http4s-tus-core",
+    name := "tus4s-core",
     description := "Provides data structures to use with tus and http4s",
     libraryDependencies ++= Dependencies.http4sCore
   )
@@ -94,7 +94,7 @@ val routes = project
   .settings(testSettings)
   .settings(scalafixSettings)
   .settings(
-    name := "http4s-tus-routes",
+    name := "tus4s-routes",
     description := "Provides tus server routes",
     libraryDependencies ++=
       Dependencies.http4sCore ++
@@ -103,7 +103,7 @@ val routes = project
       Dependencies.http4sClient ++
       Dependencies.scribe).map(_ % Test),
     reStart / fullClasspath := (Test / fullClasspath).value,
-    reStart / mainClass := Some("http4stus.server.ServerTest")
+    reStart / mainClass := Some("tus4s.server.ServerTest")
   )
   .dependsOn(core)
 
@@ -115,7 +115,7 @@ lazy val readme = project
   .settings(scalafixSettings)
   .settings(noPublish)
   .settings(
-    name := "http4s-tus-readme",
+    name := "tus4s-readme",
     libraryDependencies ++= Dependencies.http4sEmber,
     mdocIn := (LocalRootProject / baseDirectory).value / "docs" / "readme.md",
     mdocOut := (LocalRootProject / baseDirectory).value / "README.md",
@@ -133,6 +133,6 @@ val root = project
   .settings(sharedSettings)
   .settings(noPublish)
   .settings(
-    name := "http4s-tus-root"
+    name := "tus4s-root"
   )
   .aggregate(core, routes)

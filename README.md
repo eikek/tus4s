@@ -1,4 +1,4 @@
-# http4s-tus
+# tus4s
 
 This project provides routes for http4s to enable file uploads via the
 [tus protocol](https://tus.io/protocols/resumable-upload).
@@ -20,9 +20,9 @@ provided using a directory to store uploads.
 import cats.effect.*
 import fs2.io.file.Path
 
-import http4stus.data.ByteSize
-import http4stus.fs.FsTusProtocol
-import http4stus.protocol.TusProtocol
+import tus4s.data.ByteSize
+import tus4s.fs.FsTusProtocol
+import tus4s.protocol.TusProtocol
 
 val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
 // tusBackend: IO[TusProtocol[[A >: Nothing <: Any] =>> IO[A]]] = Map(
@@ -31,7 +31,7 @@ val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-te
 //     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2767/0x00000008018fc388@684ad81c,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = http4stus.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
+//   f = tus4s.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```
@@ -39,7 +39,7 @@ val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-te
 With such a backend, the endpoint can be created:
 
 ```scala
-import http4stus.server.{Retrieve, TusEndpointBuilder}
+import tus4s.server.{Retrieve, TusEndpointBuilder}
 import org.http4s.implicits.*
 
 def tusEndpoint(backend: TusProtocol[IO]) =
@@ -83,7 +83,7 @@ yield ExitCode.Success
 //         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2767/0x00000008018fc388@684ad81c,
 //         event = cats.effect.tracing.TracingEvent$StackTrace
 //       ),
-//       f = http4stus.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
+//       f = tus4s.fs.FsTusProtocol$$$Lambda$2768/0x00000008018fcf30@21b46d34,
 //       event = cats.effect.tracing.TracingEvent$StackTrace
 //     ),
 //     f = repl.MdocSession$MdocApp$$Lambda$2769/0x0000000801901000@4f8cdeb4,

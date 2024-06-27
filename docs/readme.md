@@ -1,4 +1,4 @@
-# http4s-tus
+# tus4s
 
 This project provides routes for http4s to enable file uploads via the
 [tus protocol](https://tus.io/protocols/resumable-upload).
@@ -20,9 +20,9 @@ provided using a directory to store uploads.
 import cats.effect.*
 import fs2.io.file.Path
 
-import http4stus.data.ByteSize
-import http4stus.fs.FsTusProtocol
-import http4stus.protocol.TusProtocol
+import tus4s.data.ByteSize
+import tus4s.fs.FsTusProtocol
+import tus4s.protocol.TusProtocol
 
 val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
 ```
@@ -30,7 +30,7 @@ val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-te
 With such a backend, the endpoint can be created:
 
 ```scala mdoc
-import http4stus.server.{Retrieve, TusEndpointBuilder}
+import tus4s.server.{Retrieve, TusEndpointBuilder}
 import org.http4s.implicits.*
 
 def tusEndpoint(backend: TusProtocol[IO]) =
