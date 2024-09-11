@@ -10,7 +10,7 @@ object Dependencies {
     val scribe = "3.15.0"
     val cats = "2.12.0"
     val catsEffect = "3.5.4"
-    val fs2 = "3.10.2"
+    val fs2 = "3.11.0"
     val scodecBits = "1.2.0"
     val catsParse = "1.0.0"
   }
