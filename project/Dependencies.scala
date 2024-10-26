@@ -5,7 +5,7 @@ object Dependencies {
   object V {
     val scala3 = "3.4.2"
     val http4s = "0.23.29"
-    val munit = "1.0.0"
+    val munit = "1.0.2"
     val munitCatsEffect = "2.0.0"
     val scribe = "3.15.0"
     val cats = "2.12.0"
