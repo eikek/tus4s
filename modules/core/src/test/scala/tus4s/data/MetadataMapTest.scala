@@ -1,8 +1,8 @@
 package tus4s.core.data
 
-import tus4s.core.data.MetadataMap.Key
 import munit.*
 import scodec.bits.ByteVector
+import tus4s.core.data.MetadataMap.Key
 
 class MetadataMapTest extends FunSuite:
   val key1 = Key.unsafeFromString("filename")

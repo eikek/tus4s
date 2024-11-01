@@ -4,15 +4,15 @@ import cats.effect.*
 import fs2.io.file.Path
 
 import com.comcast.ip4s.*
-import tus4s.core.data.ByteSize
-import tus4s.fs.FsTusProtocol
-import tus4s.core.TusProtocol
 import org.http4s.HttpRoutes
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router
 import org.http4s.server.middleware.ErrorHandling
 import org.http4s.server.middleware.Logger
+import tus4s.core.TusProtocol
+import tus4s.core.data.ByteSize
+import tus4s.fs.FsTusProtocol
 
 object ServerTest extends IOApp:
   val tusBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))

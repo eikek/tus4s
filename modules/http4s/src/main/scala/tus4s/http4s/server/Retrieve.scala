@@ -4,15 +4,15 @@ import cats.Applicative
 import cats.Monad
 import cats.data.OptionT
 
-import tus4s.core.data.ByteSize
-import tus4s.core.data.MetadataMap.Key
-import tus4s.core.data.UploadId
-import tus4s.core.TusProtocol
-import tus4s.http4s.headers.UploadLength
-import tus4s.http4s.headers.UploadMetadata
 import org.http4s.*
 import org.http4s.headers.*
 import org.typelevel.ci.*
+import tus4s.core.TusProtocol
+import tus4s.core.data.ByteSize
+import tus4s.core.data.MetadataMap.Key
+import tus4s.core.data.UploadId
+import tus4s.http4s.headers.UploadLength
+import tus4s.http4s.headers.UploadMetadata
 
 trait Retrieve[F[_]]:
   def find(tus: TusProtocol[F], req: Request[F], id: UploadId): F[Response[F]]
@@ -39,7 +39,9 @@ object Retrieve:
               UploadMetadata(file.state.meta),
               UploadLength(file.state.length.getOrElse(ByteSize.zero)),
               `Content-Length`(file.state.length.get.toBytes),
-              file.getContentType.flatMap(ct => MediaType.parse(ct).toOption).map(`Content-Type`(_)),
+              file.getContentType
+                .flatMap(ct => MediaType.parse(ct).toOption)
+                .map(`Content-Type`(_)),
               file.state.meta
                 .getString(Key.fileName)
                 .map(n => `Content-Disposition`("inline", Map(ci"filename" -> n)))

@@ -2,9 +2,10 @@ package tus4s.http4s.headers
 
 import cats.data.NonEmptyList
 import cats.syntax.all.*
-import tus4s.core.data.*
+
 import org.http4s.*
 import org.typelevel.ci.CIString
+import tus4s.core.data.*
 
 final case class UploadConcat(concatType: ConcatType):
   def isPartial: Boolean = concatType match
@@ -18,10 +19,12 @@ object UploadConcat:
 
   def createFinal(uris: NonEmptyList[Uri]): UploadConcat =
     UploadConcat(ConcatType.Final(uris.map(u => Url(u.renderString))))
-  
+
   given Header[UploadConcat, Header.Single] =
     Header.create(name, _.render, parse)
 
   def parse(s: String): ParseResult[UploadConcat] =
-    ConcatType.fromString(s).map(UploadConcat.apply)
+    ConcatType
+      .fromString(s)
+      .map(UploadConcat.apply)
       .leftMap(ParseFailure(_, ""))

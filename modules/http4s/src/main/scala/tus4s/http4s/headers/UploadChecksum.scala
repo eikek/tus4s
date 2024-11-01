@@ -1,10 +1,10 @@
 package tus4s.http4s.headers
 
-import tus4s.core.data.*
 import org.http4s.*
 import org.http4s.Header
 import org.typelevel.ci.CIString
 import scodec.bits.ByteVector
+import tus4s.core.data.*
 
 final case class UploadChecksum(algorithm: ChecksumAlgorithm, checksum: ByteVector):
   def render: String =

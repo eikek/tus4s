@@ -3,11 +3,6 @@ package tus4s.http4s.server
 import cats.data.NonEmptyList
 import cats.effect.*
 
-import tus4s.http4s.Endpoint
-import tus4s.core.data.*
-import tus4s.http4s.Headers
-import tus4s.core.TusConfig
-import tus4s.http4s.headers.*
 import munit.CatsEffectSuite
 import org.http4s.*
 import org.http4s.client.Client
@@ -16,6 +11,11 @@ import org.http4s.headers.Location
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
 import scodec.bits.ByteVector
+import tus4s.core.TusConfig
+import tus4s.core.data.*
+import tus4s.http4s.Endpoint
+import tus4s.http4s.Headers
+import tus4s.http4s.headers.*
 
 abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
     extends CatsEffectSuite:

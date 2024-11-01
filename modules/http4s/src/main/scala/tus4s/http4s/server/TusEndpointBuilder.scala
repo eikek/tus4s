@@ -2,9 +2,9 @@ package tus4s.http4s.server
 
 import cats.effect.Sync
 
-import tus4s.http4s.Endpoint
-import tus4s.core.*
 import org.http4s.Uri
+import tus4s.core.*
+import tus4s.http4s.Endpoint
 
 final case class TusEndpointBuilder[F[_]: Sync](
     tus: TusProtocol[F],

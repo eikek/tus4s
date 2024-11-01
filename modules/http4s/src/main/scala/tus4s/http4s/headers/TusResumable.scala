@@ -2,10 +2,10 @@ package tus4s.http4s.headers
 
 import cats.syntax.all.*
 
-import tus4s.core.data.Version
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.typelevel.ci.CIString
+import tus4s.core.data.Version
 
 final case class TusResumable(version: Version)
 

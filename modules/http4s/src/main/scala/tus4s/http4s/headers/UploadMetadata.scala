@@ -3,14 +3,14 @@ package tus4s.http4s.headers
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
-import tus4s.core.data.MetadataMap
-import tus4s.core.data.MetadataMap.Key
-import tus4s.core.internal.StringUtil
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.http4s.ParseResult
 import org.typelevel.ci.CIString
 import scodec.bits.ByteVector
+import tus4s.core.data.MetadataMap
+import tus4s.core.data.MetadataMap.Key
+import tus4s.core.internal.StringUtil
 
 final case class UploadMetadata(decoded: MetadataMap):
   def encoded: String = decoded.encoded

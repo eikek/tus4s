@@ -11,8 +11,8 @@ import fs2.Stream
 import fs2.io.file.{Files, Path}
 import fs2.io.file.{Flag, Flags}
 
-import tus4s.core.data.*
 import scodec.bits.ByteVector
+import tus4s.core.data.*
 
 final private case class UploadEntry(
     id: UploadId,

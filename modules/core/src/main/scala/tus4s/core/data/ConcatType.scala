@@ -17,7 +17,7 @@ enum ConcatType:
     case ConcatType.Final(uris) =>
       val list = uris.toList.map(_.asString).mkString(" ")
       s"final; $list"
- 
+
 object ConcatType:
   def fromString(s: String): Either[String, ConcatType] =
     if ("partial".equalsIgnoreCase(s)) Right(Partial)
@@ -31,4 +31,3 @@ object ConcatType:
             Left(s"No partial upload uris given with final concat: $s")
           case Some(nel) =>
             Right(ConcatType.Final(nel.map(Url.apply)))
-

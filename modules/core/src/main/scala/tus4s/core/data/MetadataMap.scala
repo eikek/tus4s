@@ -6,9 +6,9 @@ import cats.data.NonEmptyList
 import cats.kernel.Monoid
 import cats.syntax.all.*
 
+import scodec.bits.ByteVector
 import tus4s.core.data.MetadataMap.Key
 import tus4s.core.internal.StringUtil
-import scodec.bits.ByteVector
 
 final case class MetadataMap(data: Map[Key, ByteVector]):
   def withValue(key: Key, value: ByteVector): MetadataMap =

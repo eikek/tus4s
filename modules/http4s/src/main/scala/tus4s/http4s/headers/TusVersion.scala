@@ -3,11 +3,11 @@ package tus4s.http4s.headers
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
-import tus4s.core.data.Version
-import tus4s.http4s.Headers
 import org.http4s.Header
 import org.http4s.ParseResult
 import org.typelevel.ci.CIString
+import tus4s.core.data.Version
+import tus4s.http4s.Headers
 
 final case class TusVersion(versions: NonEmptyList[Version])
 

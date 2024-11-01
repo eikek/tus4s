@@ -88,7 +88,8 @@ val core = project
     libraryDependencies ++= Dependencies.fs2Core ++ Dependencies.catsParse
   )
 
-val fs = project.in(file("modules/fs"))
+val fs = project
+  .in(file("modules/fs"))
   .settings(sharedSettings)
   .settings(testSettings)
   .settings(scalafixSettings)

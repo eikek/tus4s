@@ -3,11 +3,11 @@ package tus4s.http4s.headers
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
-import tus4s.core.data.Extension
-import tus4s.core.internal.StringUtil
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.typelevel.ci.CIString
+import tus4s.core.data.Extension
+import tus4s.core.internal.StringUtil
 
 final case class TusExtension(extensions: NonEmptyList[Extension]):
   lazy val findCreation: Option[Extension.Creation] =

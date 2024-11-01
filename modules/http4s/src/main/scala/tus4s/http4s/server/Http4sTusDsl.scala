@@ -7,11 +7,11 @@ import cats.Monad
 import cats.data.NonEmptyList
 import cats.syntax.all.*
 
+import org.http4s.*
+import org.http4s.dsl.Http4sDsl
 import tus4s.core.data.*
 import tus4s.http4s.Headers
 import tus4s.http4s.headers.*
-import org.http4s.*
-import org.http4s.dsl.Http4sDsl
 
 private[server] trait Tus4sDsl[F[_]] extends Http4sDsl[F]:
   val checksumMismatch: Status = Headers.checksumMismatch

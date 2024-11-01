@@ -7,13 +7,13 @@ import cats.syntax.all.*
 import cats.{Applicative, ApplicativeThrow}
 import fs2.Stream
 
-import tus4s.core.data.*
-import tus4s.core.TusConfig
-import tus4s.http4s.headers.*
-import tus4s.http4s.Headers
 import org.http4s.*
 import org.http4s.headers.`Content-Length`
 import org.typelevel.ci.CIString
+import tus4s.core.TusConfig
+import tus4s.core.data.*
+import tus4s.http4s.Headers
+import tus4s.http4s.headers.*
 
 object TusCodec:
   def forPatch[F[_]: ApplicativeThrow](

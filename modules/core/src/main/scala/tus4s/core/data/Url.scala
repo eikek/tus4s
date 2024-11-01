@@ -5,5 +5,4 @@ opaque type Url = String
 object Url:
   def apply(url: String): Url = url
 
-  extension(self: Url)
-    def asString: String = self
+  extension (self: Url) def asString: String = self

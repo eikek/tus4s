@@ -6,9 +6,9 @@ import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.io.file.{Files, Path}
 
-import tus4s.core.data.*
 import tus4s.core.TusConfig
 import tus4s.core.TusProtocol
+import tus4s.core.data.*
 
 final class FsTusProtocol[F[_]: Sync: Files](
     dir: Path,

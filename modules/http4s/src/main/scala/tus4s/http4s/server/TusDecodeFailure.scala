@@ -2,11 +2,11 @@ package tus4s.http4s.server
 
 import cats.syntax.all.*
 
+import org.http4s.*
+import org.typelevel.ci.CIString
 import tus4s.core.data.ByteSize
 import tus4s.core.data.ChecksumAlgorithm
 import tus4s.core.data.Extension
-import org.http4s.*
-import org.typelevel.ci.CIString
 
 trait TusDecodeFailure extends DecodeFailure:
   def cause: Option[Throwable] = None

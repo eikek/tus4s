@@ -3,15 +3,15 @@ package tus4s.http4s.server
 import cats.effect.Sync
 import cats.syntax.all.*
 
-import tus4s.core.data.*
-import tus4s.http4s.*
-import tus4s.http4s.headers.*
-import tus4s.core.{TusConfig, TusProtocol}
 import org.http4s.*
 import org.http4s.headers.*
 import org.http4s.headers.Location
 import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
+import tus4s.core.data.*
+import tus4s.core.{TusConfig, TusProtocol}
+import tus4s.http4s.*
+import tus4s.http4s.headers.*
 
 final class TusEndpoint[F[_]: Sync](
     tus: TusProtocol[F],
