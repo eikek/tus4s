@@ -1,13 +1,12 @@
 package tus4s.fs
 
-import java.security.MessageDigest
-
 import cats.Functor
 import cats.data.NonEmptyList
 import cats.data.OptionT
 import cats.effect.Sync
 import cats.syntax.all.*
 import fs2.Stream
+import fs2.hashing.HashAlgorithm
 import fs2.io.file.{Files, Path}
 import fs2.io.file.{Flag, Flags}
 
@@ -47,11 +46,16 @@ final private case class UploadEntry(
   ): F[ByteVector] =
     val file = dir / temp.id
     val digest = algo match
-      case ChecksumAlgorithm.Sha1   => MessageDigest.getInstance("SHA-1")
-      case ChecksumAlgorithm.Sha256 => MessageDigest.getInstance("SHA-256")
-      case ChecksumAlgorithm.Sha512 => MessageDigest.getInstance("SHA-512")
-      case ChecksumAlgorithm.Md5    => MessageDigest.getInstance("MD5")
-    Files[F].readAll(file).through(fs2.hash.digest(digest)).compile.to(ByteVector)
+      case ChecksumAlgorithm.Sha1   => HashAlgorithm.SHA1
+      case ChecksumAlgorithm.Sha256 => HashAlgorithm.SHA256
+      case ChecksumAlgorithm.Sha512 => HashAlgorithm.SHA512
+      case ChecksumAlgorithm.Md5    => HashAlgorithm.MD5
+    Files[F]
+      .readAll(file)
+      .through(fs2.hashing.Hashing.forSync[F].hash(digest))
+      .compile
+      .lastOrError
+      .map(_.bytes.toByteVector)
 
   def append[F[_]: Files: Sync](temp: TempChunk, state: UploadState): F[Unit] =
     val src = dir / temp.id

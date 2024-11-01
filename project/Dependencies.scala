@@ -5,12 +5,13 @@ object Dependencies {
   object V {
     val scala3 = "3.4.3"
     val http4s = "0.23.29"
-    val munit = "1.0.0"
+    val munit = "1.0.2"
+    val munitScalaCheck = "1.0.0"
     val munitCatsEffect = "2.0.0"
     val scribe = "3.15.2"
     val cats = "2.12.0"
     val catsEffect = "3.5.5"
-    val fs2 = "3.10.2"
+    val fs2 = "3.11.0"
     val scodecBits = "1.2.0"
     val catsParse = "1.0.0"
   }
@@ -62,7 +63,7 @@ object Dependencies {
 
   val munit = Seq(
     "org.scalameta" %% "munit" % V.munit,
-    "org.scalameta" %% "munit-scalacheck" % V.munit,
+    "org.scalameta" %% "munit-scalacheck" % V.munitScalaCheck,
     "org.typelevel" %% "munit-cats-effect" % V.munitCatsEffect
   )
 }
