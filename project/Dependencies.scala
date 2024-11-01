@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
 
   object V {
-    val scala3 = "3.4.2"
+    val scala3 = "3.4.3"
     val http4s = "0.23.29"
     val munit = "1.0.0"
     val munitCatsEffect = "2.0.0"
