@@ -8,7 +8,7 @@ object Dependencies {
     val munit = "1.0.2"
     val munitScalaCheck = "1.0.0"
     val munitCatsEffect = "2.0.0"
-    val scribe = "3.15.2"
+    val scribe = "3.15.3"
     val cats = "2.12.0"
     val catsEffect = "3.5.5"
     val fs2 = "3.11.0"
