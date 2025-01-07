@@ -13,7 +13,7 @@ object Dependencies {
     val catsEffect = "3.5.5"
     val fs2 = "3.11.0"
     val scodecBits = "1.2.0"
-    val catsParse = "1.0.0"
+    val catsParse = "1.1.0"
   }
 
   val catsParse = Seq(
