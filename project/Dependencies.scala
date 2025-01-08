@@ -5,15 +5,15 @@ object Dependencies {
   object V {
     val scala3 = "3.4.3"
     val http4s = "0.23.30"
-    val munit = "1.0.2"
+    val munit = "1.0.4"
     val munitScalaCheck = "1.0.0"
     val munitCatsEffect = "2.0.0"
-    val scribe = "3.15.2"
+    val scribe = "3.15.3"
     val cats = "2.12.0"
-    val catsEffect = "3.5.5"
+    val catsEffect = "3.5.7"
     val fs2 = "3.11.0"
     val scodecBits = "1.2.0"
-    val catsParse = "1.0.0"
+    val catsParse = "1.1.0"
   }
 
   val catsParse = Seq(
