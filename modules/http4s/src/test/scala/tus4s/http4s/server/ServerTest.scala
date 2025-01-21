@@ -4,7 +4,6 @@ import cats.effect.*
 import fs2.io.file.Path
 
 import com.comcast.ip4s.*
-import org.http4s.HttpRoutes
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router

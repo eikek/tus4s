@@ -1,7 +1,5 @@
 package tus4s.http4s.headers
 
-import cats.syntax.all.*
-
 import org.http4s.Header
 import org.http4s.ParseFailure
 import org.typelevel.ci.CIString
