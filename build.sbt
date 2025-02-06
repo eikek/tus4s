@@ -20,6 +20,7 @@ val sharedSettings = Seq(
       "UTF-8",
       "-language:higherKinds",
       "-Ykind-projector:underscores",
+      "-source:future",
       "-Werror",
       "-indent",
       "-print-lines",
@@ -85,7 +86,7 @@ val core = project
   .settings(
     name := "tus4s-core",
     description := "Provides core data structures to use with tus",
-    libraryDependencies ++= Dependencies.fs2Core ++ Dependencies.catsParse
+    libraryDependencies ++= Dependencies.fs2Core ++ Dependencies.catsParse ++ Dependencies.ulid
   )
 
 val fs = project
@@ -97,6 +98,18 @@ val fs = project
     name := "tus4s-fs",
     description := "Provides a backend for storing files in the local file system",
     libraryDependencies ++= Dependencies.fs2Io ++ Dependencies.catsEffect
+  )
+  .dependsOn(core % "compile->compile;test->test")
+
+val pg = project
+  .in(file("modules/pg"))
+  .settings(sharedSettings)
+  .settings(testSettings)
+  .settings(scalafixSettings)
+  .settings(
+    name := "tus4s-pg",
+    description := "Provides a backend for storing files in postgres",
+    libraryDependencies ++= Dependencies.catsEffect ++ Dependencies.postgres
   )
   .dependsOn(core % "compile->compile;test->test")
 
@@ -147,4 +160,4 @@ val root = project
   .settings(
     name := "tus4s-root"
   )
-  .aggregate(core, fs, http4s)
+  .aggregate(core, fs, pg, http4s)

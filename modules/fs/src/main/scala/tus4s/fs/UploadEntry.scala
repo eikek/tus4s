@@ -3,7 +3,7 @@ package tus4s.fs
 import cats.Functor
 import cats.data.NonEmptyList
 import cats.data.OptionT
-import cats.effect.Sync
+import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
 import fs2.Stream
 import fs2.hashing.HashAlgorithm
@@ -32,13 +32,14 @@ final private case class UploadEntry(
             .compile
             .lastOrError
 
-  def writeChunk[F[_]: Files: Sync](data: Stream[F, Byte]): F[TempChunk] =
-    UploadId.randomUUID[F].flatMap { id =>
+  def writeChunk[F[_]: Files: Sync](data: Stream[F, Byte]): Resource[F, TempChunk] =
+    val create = UploadId.randomULID[F].flatMap { id =>
       val file = dir / id.value
       data.through(Files[F].writeAll(file)).compile.drain >> Files[F]
         .size(file)
         .map(n => TempChunk(id.value, ByteSize.bytes(n)))
     }
+    Resource.make(create)(tc => Files[F].deleteIfExists(dir / tc.id).void)
 
   def createChecksum[F[_]: Files: Sync](
       temp: TempChunk,
@@ -99,7 +100,7 @@ private object UploadEntry:
       uris: NonEmptyList[Url],
       meta: MetadataMap
   ): F[UploadState] =
-    UploadId.randomUUID[F].flatMap(create(dir, _)).flatMap { targetEntry =>
+    UploadId.randomULID[F].flatMap(create(dir, _)).flatMap { targetEntry =>
       val flags = Flags(Flag.Append, Flag.Create)
       val state = Files[F]
         .size(targetEntry.dataFile)

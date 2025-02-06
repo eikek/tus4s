@@ -62,7 +62,7 @@ final class FsTusProtocol[F[_]: Sync: Files](
     else if (state.isDone) ReceiveResult.UploadDone.pure[F]
     else if (state.isFinal) ReceiveResult.UploadIsFinal.pure[F]
     else
-      e.writeChunk(chunk.data).flatMap { temp =>
+      e.writeChunk(chunk.data).use { temp =>
         val newState = state.copy(
           offset = temp.length + state.offset,
           length = state.length.orElse(chunk.uploadLength),
@@ -80,7 +80,7 @@ final class FsTusProtocol[F[_]: Sync: Files](
       }
 
   private def makeNewEntry =
-    UploadId.randomUUID[F].flatMap(UploadEntry.create(dir, _))
+    UploadId.randomULID[F].flatMap(UploadEntry.create(dir, _))
 
   private def whenExceedsMaxSize[A](
       size: Option[ByteSize]
@@ -105,19 +105,24 @@ final class FsTusProtocol[F[_]: Sync: Files](
         )
 
         if (req.hasContent)
-          e.writeChunk(req.data).flatMap { temp =>
-            val state = stateNoContent.copy(offset = temp.length)
-            val checksumMismatch =
-              OptionT
-                .fromOption[F](req.checksum)
-                .semiflatMap(uc =>
-                  e.createChecksum(temp, uc.algorithm).map(_ == uc.checksum)
-                )
-                .subflatMap(ok => Option.when(!ok)(CreationResult.ChecksumMismatch))
+          e.writeChunk(req.data).use { temp =>
+            whenExceedsMaxSize(temp.length.some)(
+              CreationResult.UploadTooLarge(_, _)
+            ) match
+              case Some(r) => r.pure[F]
+              case None =>
+                val state = stateNoContent.copy(offset = temp.length)
+                val checksumMismatch =
+                  OptionT
+                    .fromOption[F](req.checksum)
+                    .semiflatMap(uc =>
+                      e.createChecksum(temp, uc.algorithm).map(_ == uc.checksum)
+                    )
+                    .subflatMap(ok => Option.when(!ok)(CreationResult.ChecksumMismatch))
 
-            checksumMismatch.getOrElseF:
-              (e.append(temp, state) >> e.writeState(state))
-                .as(CreationResult.Success(e.id, state.offset, None))
+                checksumMismatch.getOrElseF:
+                  (e.append(temp, state) >> e.writeState(state))
+                    .as(CreationResult.Success(e.id, state.offset, None))
           }
         else
           e.writeState(stateNoContent)

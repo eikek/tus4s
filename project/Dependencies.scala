@@ -14,7 +14,17 @@ object Dependencies {
     val fs2 = "3.11.0"
     val scodecBits = "1.2.0"
     val catsParse = "1.1.0"
+    val postgres = "42.7.3"
+    val ulid = "2025.1.1"
   }
+
+  val postgres = Seq(
+    "org.postgresql" % "postgresql" % V.postgres
+  )
+
+  val ulid = Seq(
+    "org.wvlet.airframe" %% "airframe-ulid" % V.ulid
+  )
 
   val catsParse = Seq(
     "org.typelevel" %% "cats-parse" % V.catsParse

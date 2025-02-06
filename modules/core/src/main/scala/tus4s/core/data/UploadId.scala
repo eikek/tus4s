@@ -1,8 +1,8 @@
 package tus4s.core.data
 
-import java.util.UUID
-
 import cats.effect.Sync
+import wvlet.airframe.ulid.ULID
+import java.util.UUID
 
 opaque type UploadId = String
 
@@ -17,8 +17,14 @@ object UploadId:
   def unsafeFromString(s: String): UploadId =
     fromString(s).fold(sys.error, identity)
 
-  def randomUUID[F[_]: Sync]: F[UploadId] =
-    Sync[F].delay(unsafeFromString(UUID.randomUUID().toString))
+  def randomULID[F[_]: Sync]: F[UploadId] =
+    Sync[F].delay(fromULID(ULID.newULID))
+
+  def fromULID(ulid: ULID): UploadId =
+    unsafeFromString(ulid.toString)
+
+  def fromUUID(uuid: UUID): UploadId =
+    unsafeFromString(uuid.toString())
 
   def unapply(s: String): Option[UploadId] =
     fromString(s).toOption

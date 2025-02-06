@@ -5,5 +5,5 @@ import cats.data.NonEmptyList
 final case class ConcatRequest(
     ids: NonEmptyList[UploadId],
     uris: NonEmptyList[Url],
-    meta: MetadataMap
+    meta: MetadataMap = MetadataMap.empty
 )
