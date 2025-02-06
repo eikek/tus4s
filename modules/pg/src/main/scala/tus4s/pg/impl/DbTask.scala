@@ -4,7 +4,7 @@ import cats.data.Kleisli
 import java.sql.Connection
 import cats.Applicative
 import cats.effect.*
-import cats.syntax.all.*
+//import cats.syntax.all.*
 import cats.MonadThrow
 
 type DbTask[F[_], A] = Kleisli[F, Connection, A]
@@ -43,15 +43,15 @@ object DbTask:
       old
     }
 
-  private def makeTX[F[_]: Sync]: DbTask[Resource[F, *], Unit] =
-    DbTask { conn =>
+  // private def makeTX[F[_]: Sync]: DbTask[Resource[F, *], Unit] =
+  //   DbTask { conn =>
 
-      val ac = Resource.make(setAutoCommit(false).run(conn))(flag => setAutoCommit(flag).run(conn).void)
+  //     val ac = Resource.make(setAutoCommit(false).run(conn))(flag => setAutoCommit(flag).run(conn).void)
 
-      val comm = Resource.onFinalizeCase {
-        case Resource.ExitCase.Errored(ex) =>
-          ex.printStackTrace()
-          conn.rollback()
-      }
-      ac.void
-    }
+  //     val comm = Resource.onFinalizeCase {
+  //       case Resource.ExitCase.Errored(ex) =>
+  //         ex.printStackTrace()
+  //         conn.rollback()
+  //     }
+  //     ac.void
+  //   }

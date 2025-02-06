@@ -23,6 +23,8 @@
           jq
           scala-cli
           tusc-sh
+          devshell-tools.packages.${system}.postgres-fg
+          postgresql
         ]);
     in {
       formatter = pkgs.alejandra;
