@@ -1,4 +1,4 @@
-package tus4s.pg.impl
+package tus4s.pg
 
 import cats.effect.*
 import java.sql.Connection
@@ -8,6 +8,8 @@ import java.sql.DriverManager
 type ConnectionResource[F[_]] = Resource[F, Connection]
 
 object ConnectionResource:
+  Class.forName("org.postgresql.Driver")
+
   def fromDataSource[F[_]: Sync](ds: DataSource): ConnectionResource[F] =
     Resource.make(Sync[F].blocking(ds.getConnection))(conn =>
       Sync[F].blocking(conn.close())

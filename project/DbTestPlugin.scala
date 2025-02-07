@@ -65,12 +65,11 @@ object DbTestPlugin extends AutoPlugin {
       logger.error("Cannot connect to postgres. Giving up")
       sys.error("Cannot connect to postgres. Giving up")
     }
-
+    Thread.sleep(100)
     val rc = "pg_isready -d postgres -h localhost -p 5432".!
     if (rc == 0) ()
     else {
       logger.info("Waiting for postgres to come up…")
-      Thread.sleep(100)
       waitForPostgres(logger, tries + 1)
     }
   }
