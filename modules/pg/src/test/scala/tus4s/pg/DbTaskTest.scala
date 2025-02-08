@@ -34,6 +34,5 @@ class DbTaskTest extends CatsEffectSuite:
       assert(rs.next())
       val n = rs.getInt(1)
       assertEquals(n, 1)
-      Thread.sleep(3000)
       IO.unit
     }

@@ -29,11 +29,12 @@ object DbTestPlugin extends AutoPlugin {
           startPostgres(dataDir, logger)
           logger.info("Running tests…")
         },
-        (Test / test).all(ScopeFilter(inAggregates(ThisProject))),
-        Def.task {
-          val logger = streams.value.log
-          stopPostgres(logger)
-        }
+        // https://www.scala-sbt.org/1.x/docs/Tasks.html#andFinally
+        (Test / test)
+          .all(ScopeFilter(inAggregates(ThisProject)))
+          .andFinally(
+            stopPostgres()
+          )
       )
       .value,
 
@@ -44,7 +45,8 @@ object DbTestPlugin extends AutoPlugin {
 
   def startPostgres(dataDir: File, logger: Logger): Unit = {
     logger.info(s"Starting PostgreSQL server in ${dataDir}…")
-    val pb = new lang.ProcessBuilder("postgres-fg", dataDir.absolutePath, "5432")
+    val port = sys.env.getOrElse("POSTGRES_DB_PORT", "5432")
+    val pb = new lang.ProcessBuilder("postgres-fg", dataDir.absolutePath, port)
     pb.redirectErrorStream(true)
     pb.redirectOutput(lang.ProcessBuilder.Redirect.INHERIT)
     val p = pb.start()
@@ -74,10 +76,9 @@ object DbTestPlugin extends AutoPlugin {
     }
   }
 
-  def stopPostgres(logger: Logger): Unit =
+  def stopPostgres(): Unit =
     Option(process.get()) match {
       case Some(p) =>
-        logger.info(s"Stopping PostgreSQL server (${p.pid()})…")
         p.destroy()
         Thread.sleep(100)
         if (p.isAlive()) {
