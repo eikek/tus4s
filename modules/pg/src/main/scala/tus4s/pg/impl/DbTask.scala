@@ -7,6 +7,7 @@ import cats.effect.*
 import cats.syntax.all.*
 import cats.MonadThrow
 import java.sql.PreparedStatement
+import java.sql.ResultSet
 
 type DbTask[F[_], A] = Kleisli[F, Connection, A]
 
@@ -17,11 +18,21 @@ object DbTask:
   def apply[F[_], A](f: Connection => F[A]): DbTask[F, A] =
     Kleisli(f)
 
+  def applyR[F[_], A](f: Connection => Resource[F, A]): DbTaskR[F, A] =
+    Kleisli(f)
+
   def pure[F[_]: Applicative, A](a: A): DbTask[F, A] =
     Kleisli.pure(a)
 
   def delay[F[_]: Sync, A](f: Connection => A): DbTask[F, A] =
     Kleisli(conn => Sync[F].blocking(f(conn)))
+
+  def lift[F[_]: Sync, A](a: => A): DbTask[F, A] =
+    delay(_ => a)
+
+  def liftF[F[_], A](a: F[A]): DbTask[F, A] =
+    Kleisli.liftF(a)
+
 
   def fail[F[_]: MonadThrow, A](ex: Throwable): DbTask[F, A] =
     DbTask(_ => MonadThrow[F].raiseError(ex))
@@ -90,7 +101,5 @@ object DbTask:
   def executeUpdate[F[_]: Sync](ps: PreparedStatement): F[Int] =
     Sync[F].blocking(ps.executeUpdate())
 
-  def withDatabase[F[_]: Sync](name: String): DbTaskR[F, String] =
-    val create = prepare(s"create database $name").mapF(_.use(executeUpdate(_))).void
-    val drop = prepare(s"drop database $name").mapF(_.use(executeUpdate(_))).void
-    resourceF(c => create.run(c).as(name))((c, _) => drop.run(c))
+  def executeQuery[F[_]: Sync](ps: PreparedStatement): DbTaskR[F, ResultSet] =
+    resource(_ => ps.executeQuery())((_, rs) => rs.close())
