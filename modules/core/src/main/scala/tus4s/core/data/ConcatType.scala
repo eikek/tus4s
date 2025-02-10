@@ -31,3 +31,6 @@ object ConcatType:
             Left(s"No partial upload uris given with final concat: $s")
           case Some(nel) =>
             Right(ConcatType.Final(nel.map(Url.apply)))
+
+  def unsafeFromString(s: String): ConcatType =
+    fromString(s).fold(sys.error, identity)

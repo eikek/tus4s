@@ -8,6 +8,10 @@ class MetadataMapTest extends FunSuite:
   val key1 = Key.unsafeFromString("filename")
   val key2 = Key.unsafeFromString("is-obsolete")
 
+  test("empty map"):
+    assertEquals(MetadataMap.empty.encoded, "")
+    assertEquals(MetadataMap.parseTus(""), Right(MetadataMap.empty))
+
   test("key not contain invalid characters"):
     assert(Key.fromString("a,b").isLeft)
     assert(Key.fromString("a b").isLeft)

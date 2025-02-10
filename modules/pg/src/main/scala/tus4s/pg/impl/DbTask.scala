@@ -8,6 +8,8 @@ import cats.syntax.all.*
 import cats.MonadThrow
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import org.postgresql.largeobject.LargeObjectManager
+import org.postgresql.PGConnection
 
 type DbTask[F[_], A] = Kleisli[F, Connection, A]
 
@@ -103,3 +105,6 @@ object DbTask:
 
   def executeQuery[F[_]: Sync](ps: PreparedStatement): DbTaskR[F, ResultSet] =
     resource(_ => ps.executeQuery())((_, rs) => rs.close())
+
+  def loManager[F[_]: Sync]: DbTask[F, LargeObjectManager] =
+    delay(_.unwrap(classOf[PGConnection]).getLargeObjectAPI())

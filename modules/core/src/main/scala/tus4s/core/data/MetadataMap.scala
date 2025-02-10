@@ -57,7 +57,8 @@ object MetadataMap:
 
   /** Parsing tus header string */
   def parseTus(s: String): Either[String, MetadataMap] =
-    StringUtil
+    if (s.isBlank()) Right(MetadataMap.empty)
+    else StringUtil
       .commaList(s)
       .toRight(s"No value provided for in upload metadata")
       .flatMap(nel => nel.traverse(StringUtil.pair(_, ' ')))

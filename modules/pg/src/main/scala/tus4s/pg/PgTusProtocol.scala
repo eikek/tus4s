@@ -3,7 +3,9 @@ package tus4s.pg
 import tus4s.core.*
 import tus4s.core.data.*
 
-class PgTusProtocol[F[_]] extends TusProtocol[F]:
+class PgTusProtocol[F[_]](cfg: PgConfig[F]) extends TusProtocol[F]:
+  println(s"$cfg")
+
   /** Configuration supported by this protocol implementation. */
   def config: TusConfig = ???
 
