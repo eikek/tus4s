@@ -1,19 +1,25 @@
 package tus4s.pg.impl
 
-import cats.data.Kleisli
 import java.sql.Connection
-import cats.Applicative
-import cats.effect.*
-import cats.syntax.all.*
-import cats.MonadThrow
 import java.sql.PreparedStatement
 import java.sql.ResultSet
-import org.postgresql.largeobject.LargeObjectManager
+
+import cats.Applicative
+import cats.MonadThrow
+import cats.data.Kleisli
+import cats.effect.*
+import cats.syntax.all.*
+
 import org.postgresql.PGConnection
+import org.postgresql.largeobject.LargeObject
+import org.postgresql.largeobject.LargeObjectManager
+import tus4s.core.data.ByteRange
 
 type DbTask[F[_], A] = Kleisli[F, Connection, A]
 
 type DbTaskR[F[_], A] = Kleisli[Resource[F, _], Connection, A]
+
+type DbTaskS[F[_], A] = Kleisli[fs2.Stream[F, _], Connection, A]
 
 object DbTask:
 
@@ -34,7 +40,6 @@ object DbTask:
 
   def liftF[F[_], A](a: F[A]): DbTask[F, A] =
     Kleisli.liftF(a)
-
 
   def fail[F[_]: MonadThrow, A](ex: Throwable): DbTask[F, A] =
     DbTask(_ => MonadThrow[F].raiseError(ex))
@@ -108,3 +113,26 @@ object DbTask:
 
   def loManager[F[_]: Sync]: DbTask[F, LargeObjectManager] =
     delay(_.unwrap(classOf[PGConnection]).getLargeObjectAPI())
+
+  def createLargeObject[F[_]: Sync](lom: LargeObjectManager) =
+    delay(_ => lom.createLO())
+
+  def openLoRead[F[_]: Sync](
+      lom: LargeObjectManager,
+      oid: Long
+  ): DbTaskR[F, LargeObject] =
+    resource(_ => lom.open(oid, LargeObjectManager.READ, true))((_, lo) => lo.close())
+
+  def openLoWrite[F[_]: Sync](
+      lom: LargeObjectManager,
+      oid: Long
+  ): DbTaskR[F, LargeObject] =
+    resource(_ => lom.open(oid, LargeObjectManager.READWRITE, true))((_, lo) =>
+      lo.close()
+    )
+
+  def seek[F[_]: Sync](lo: LargeObject, range: ByteRange): DbTask[F, Unit] =
+    range match
+      case ByteRange.All => pure(())
+      case ByteRange.Chunk(offset, _) =>
+        liftF(Sync[F].blocking(lo.seek64(offset.toBytes, LargeObject.SEEK_SET)))

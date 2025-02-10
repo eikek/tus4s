@@ -1,6 +1,6 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     devshell-tools.url = "github:eikek/devshell-tools";
     flake-utils.url = "github:numtide/flake-utils";
   };
@@ -25,6 +25,8 @@
           tusc-sh
           devshell-tools.packages.${system}.postgres-fg
           postgresql
+          bloop
+          metals
         ]);
     in {
       formatter = pkgs.alejandra;

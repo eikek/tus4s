@@ -58,12 +58,13 @@ object MetadataMap:
   /** Parsing tus header string */
   def parseTus(s: String): Either[String, MetadataMap] =
     if (s.isBlank()) Right(MetadataMap.empty)
-    else StringUtil
-      .commaList(s)
-      .toRight(s"No value provided for in upload metadata")
-      .flatMap(nel => nel.traverse(StringUtil.pair(_, ' ')))
-      .flatMap(nel => nel.traverse(readKeyValue))
-      .map(fromNel)
+    else
+      StringUtil
+        .commaList(s)
+        .toRight(s"No value provided for in upload metadata")
+        .flatMap(nel => nel.traverse(StringUtil.pair(_, ' ')))
+        .flatMap(nel => nel.traverse(readKeyValue))
+        .map(fromNel)
 
   private def fromNel(nel: NonEmptyList[(Key, ByteVector)]): MetadataMap =
     MetadataMap(nel.toList.toMap)

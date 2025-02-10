@@ -1,9 +1,10 @@
 package tus4s.pg
 
-import cats.effect.*
 import java.sql.Connection
-import javax.sql.DataSource
 import java.sql.DriverManager
+import javax.sql.DataSource
+
+import cats.effect.*
 
 type ConnectionResource[F[_]] = Resource[F, Connection]
 

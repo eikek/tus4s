@@ -1,9 +1,10 @@
 package tus4s.data
 
+import java.util.UUID
+
 import munit.FunSuite
 import tus4s.core.data.UploadId
 import wvlet.airframe.ulid.ULID
-import java.util.UUID
 
 class UploadIdTest extends FunSuite:
 

@@ -2,10 +2,11 @@ package tus4s.pg
 
 import cats.effect.*
 import cats.syntax.all.*
+
 import munit.CatsEffectSuite
-import wvlet.airframe.ulid.ULID
 import tus4s.pg.impl.DbTask
 import tus4s.pg.impl.syntax.*
+import wvlet.airframe.ulid.ULID
 
 /** Establishes connections to the postgres database that is managed by sbts DbTestPlugin. */
 trait DbTestBase extends CatsEffectSuite:
@@ -35,3 +36,6 @@ trait DbTestBase extends CatsEffectSuite:
   val randomDB: ConnectionResource[IO] = createRandomDB.flatMap(db =>
     ConnectionResource.simple[IO](s"jdbc:postgresql://localhost:$dbPort/$db")
   )
+
+  def withRandomDB[A](t: DbTask[IO, A]): IO[A] =
+    randomDB.use(t.run)

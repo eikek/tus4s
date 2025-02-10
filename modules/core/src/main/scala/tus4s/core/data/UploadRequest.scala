@@ -1,10 +1,10 @@
 package tus4s.core.data
 
+import cats.data.NonEmptyList
+import fs2.Chunk
 import fs2.Stream
 
 import scodec.bits.ByteVector
-import cats.data.NonEmptyList
-import fs2.Chunk
 
 final case class UploadRequest[F[_]](
     offset: ByteSize,
@@ -28,7 +28,19 @@ final case class UploadRequest[F[_]](
 
 object UploadRequest:
 
-  final case class Checksum(algorithm: ChecksumAlgorithm, checksum: ByteVector)
+  final case class Checksum(algorithm: ChecksumAlgorithm, checksum: ByteVector):
+    def asString: String = s"${algorithm.name}:${checksum.toHex}"
+
+  object Checksum:
+    def fromString(s: String): Either[String, Checksum] =
+      s.split(':').toList match
+        case alg :: sum :: Nil =>
+          for
+            ca <- ChecksumAlgorithm.fromString(alg)
+            cc <- ByteVector.fromHexDescriptive(sum)
+          yield Checksum(ca, cc)
+        case _ =>
+          Left(s"Invalid checksum: $s")
 
   def fromByteVector[F[_]](bv: ByteVector): UploadRequest[F] =
     UploadRequest[F](

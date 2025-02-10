@@ -1,11 +1,13 @@
 package tus4s.pg.impl
 
-import cats.effect.*
-import cats.syntax.all.*
 import java.sql.PreparedStatement
 import java.sql.ResultSet
-import tus4s.pg.ConnectionResource
+
 import cats.data.Kleisli
+import cats.effect.*
+import cats.syntax.all.*
+
+import tus4s.pg.ConnectionResource
 
 object syntax {
   extension [F[_]: Sync](self: DbTaskR[F, PreparedStatement])
@@ -47,6 +49,9 @@ object syntax {
     def resource: DbTaskR[F, A] =
       self.mapF(a => Resource.eval(a))
 
+    def stream: DbTaskS[F, A] =
+      self.mapF(a => fs2.Stream.eval(a))
+
     def inTx(using Sync[F]): DbTask[F, A] = DbTask.inTX(self)
 
   extension [F[_]: MonadCancelThrow, A](self: DbTask[F, A])
@@ -61,8 +66,8 @@ object syntax {
       stringColumn(name).getOrElse(sys.error(s"Column '$name' could not be retrieved"))
 
     def longColumn(name: String): Option[Long] =
-      Option(self.getLong(name))
+      Option(self.getLong(name)).filter(_ != 0)
 
     def longColumnRequire(name: String): Long =
-      longColumn(name).getOrElse(sys.error(s"Column '$name' could not be retrieved"))
+      self.getLong(name)
 }

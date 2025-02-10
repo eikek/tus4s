@@ -1,8 +1,10 @@
 package tus4s.core.data
 
-import cats.effect.Sync
-import wvlet.airframe.ulid.ULID
 import java.util.UUID
+
+import cats.effect.Sync
+
+import wvlet.airframe.ulid.ULID
 
 opaque type UploadId = String
 

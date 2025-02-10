@@ -40,3 +40,8 @@ class MetadataMapTest extends FunSuite:
     assertEquals(m.getString(key1), Some("persönlich.odt"))
     assert(m.exists(key2))
     assertEquals(m.encoded, raw)
+
+  test("equals"):
+    val m1 = MetadataMap.empty.withFilename("test.txt")
+    val m2 = MetadataMap.parseTus(m1.encoded).fold(sys.error, identity)
+    assertEquals(m1, m2)

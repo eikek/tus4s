@@ -1,7 +1,8 @@
 package tus4s.pg.impl
 
-import tus4s.pg.*
 import cats.effect.*
+
+import tus4s.pg.*
 import tus4s.pg.impl.syntax.*
 
 class DbTaskTest extends DbTestBase:
@@ -53,6 +54,9 @@ class DbTaskTest extends DbTestBase:
         _ <- create.inTx.run(conn).attempt
         r <- test.run(conn).attempt
         _ = assert(r.isLeft)
-        _ = assert(r.swap.toOption.get.getMessage.startsWith("ERROR: relation \"testing\" does not exist"))
+        _ = assert(
+          r.swap.toOption.get.getMessage
+            .startsWith("ERROR: relation \"testing\" does not exist")
+        )
       yield ()
     }

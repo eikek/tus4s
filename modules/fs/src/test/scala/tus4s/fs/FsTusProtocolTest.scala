@@ -1,17 +1,18 @@
 package tus4s.fs
 
-import munit.*
+import cats.data.NonEmptyList
 import cats.effect.*
 import fs2.io.file.Files
-import tus4s.core.data.ByteSize
-import tus4s.core.data.UploadRequest
-import tus4s.core.data.MetadataMap
-import tus4s.core.data.CreationResult
+
+import munit.*
 import scodec.bits.*
+import tus4s.core.data.ByteSize
 import tus4s.core.data.ConcatRequest
-import cats.data.NonEmptyList
-import tus4s.core.data.Url
 import tus4s.core.data.ConcatResult
+import tus4s.core.data.CreationResult
+import tus4s.core.data.MetadataMap
+import tus4s.core.data.UploadRequest
+import tus4s.core.data.Url
 
 class FsTusProtocolTest extends CatsEffectSuite:
 
