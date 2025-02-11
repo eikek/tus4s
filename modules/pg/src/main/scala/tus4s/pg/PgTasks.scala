@@ -22,16 +22,19 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       chunkSize: ByteSize,
       maxSize: Option[ByteSize]
   ): DbTask[F, CreationResult] =
-    for
-      id <- DbTask.liftF(UploadId.randomULID[F])
-      _ <- fileTable.insert(req.toStateNoContent(id)).inTx
+    sizeExceeded(maxSize, req.uploadLength.orElse(req.contentLength)) match
+      case Some(r) => DbTask.pure(r)
+      case None =>
+        for
+          id <- DbTask.liftF(UploadId.randomULID[F])
+          _ <- fileTable.insert(req.toStateNoContent(id)).inTx
 
-      saved <-
-        if (req.hasContent)
-          insertFile(id, req.data.chunkN(chunkSize.toBytes.toInt), maxSize)
-        else DbTask.pure(Right(ByteSize.zero))
-      res = saved.fold(identity, off => CreationResult.Success(id, off, None))
-    yield res
+          saved <-
+            if (req.hasContent)
+              insertFile(id, req.data.chunkN(chunkSize.toBytes.toInt), maxSize)
+            else DbTask.pure(Right(ByteSize.zero))
+          res = saved.fold(identity, off => CreationResult.Success(id, off, None))
+        yield res
 
   def insertFile(
       id: UploadId,
@@ -144,3 +147,10 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
         if (size.exists(_ <= bytesRead)) Chunk.empty.pure[F]
         else Sync[F].blocking(Chunk.array(lo.read(remaining)))
     yield next
+
+  def sizeExceeded(max: Option[ByteSize], cur: Option[ByteSize]) =
+    for
+      m <- max
+      c <- cur
+      if m < c
+    yield CreationResult.UploadTooLarge(m, c)

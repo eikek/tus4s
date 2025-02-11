@@ -1,6 +1,7 @@
 package tus4s.pg
 
 import cats.effect.*
+import cats.syntax.all.*
 
 import tus4s.core.*
 import tus4s.core.data.*
@@ -10,12 +11,15 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
   private val tasks = PgTasks[F](cfg.table)
   private val table = PgTusTable[F](cfg.table)
 
+  def init: F[Unit] =
+    cfg.db.use(table.create.run)
+
   /** Configuration supported by this protocol implementation. */
   def config: TusConfig = TusConfig(
     extensions = Set(
       Extension.Creation(CreationOptions.all),
-      Extension.Termination,
-      Extension.Concatenation
+      Extension.Termination
+//      Extension.Concatenation
     ),
     maxSize = cfg.maxSize
   )
@@ -37,3 +41,9 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
 
   /** Concatenate chunks into a final upload, may remove partial uploads. */
   def concat(req: ConcatRequest): F[ConcatResult] = ???
+
+object PgTusProtocol:
+
+  def create[F[_]: Sync](cfg: PgConfig[F]): F[TusProtocol[F]] =
+    val tp = PgTusProtocol[F](cfg)
+    tp.init.as(tp)

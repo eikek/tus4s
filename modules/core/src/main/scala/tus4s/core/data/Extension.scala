@@ -7,10 +7,19 @@ import cats.syntax.all.*
 import tus4s.core.internal.StringUtil
 
 enum Extension:
+  /** https://tus.io/protocols/resumable-upload#creation */
   case Creation(options: Set[CreationOptions])
+
+  /** https://tus.io/protocols/resumable-upload#expiration */
   case Expiration
+
+  /** https://tus.io/protocols/resumable-upload#checksum */
   case Checksum(algorithms: NonEmptyList[ChecksumAlgorithm])
+
+  /** https://tus.io/protocols/resumable-upload#termination */
   case Termination
+
+  /** https://tus.io/protocols/resumable-upload#concatenation */
   case Concatenation
 
   val names: NonEmptyList[String] = this match
