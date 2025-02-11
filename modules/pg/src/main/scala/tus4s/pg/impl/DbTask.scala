@@ -71,6 +71,13 @@ object DbTask:
       old
     }
 
+  def withAutoCommit[F[_]: Sync](flag: Boolean): DbTaskR[F, Unit] =
+    resource { conn =>
+      val old = conn.getAutoCommit()
+      conn.setAutoCommit(flag)
+      old
+    }((conn, old) => conn.setAutoCommit(old)).void
+
   private def makeTX[F[_]: Sync]: DbTaskR[F, Unit] =
     DbTask { conn =>
       val ac = Resource.make(setAutoCommit(false).run(conn))(flag =>
@@ -126,10 +133,16 @@ object DbTask:
   def openLoWrite[F[_]: Sync](
       lom: LargeObjectManager,
       oid: Long
-  ): DbTaskR[F, LargeObject] =
-    resource(_ => lom.open(oid, LargeObjectManager.READWRITE, true))((_, lo) =>
-      lo.close()
+  ): Resource[F, LargeObject] =
+    Resource.make(Sync[F].blocking(lom.open(oid, LargeObjectManager.READWRITE, true)))(
+      lo => Sync[F].blocking(lo.close())
     )
+
+  def openLoWriteR[F[_]: Sync](
+      lom: LargeObjectManager,
+      oid: Long
+  ): DbTaskR[F, LargeObject] =
+    applyR(_ => openLoWrite(lom, oid))
 
   def seek[F[_]: Sync](lo: LargeObject, range: ByteRange): DbTask[F, Unit] =
     range match

@@ -1,9 +1,15 @@
 package tus4s.pg
 
+import java.sql.Connection
+
 import cats.effect.*
 import cats.syntax.all.*
+import fs2.{Chunk, Stream}
 
 import munit.CatsEffectSuite
+import tus4s.core.data.ByteSize
+import tus4s.core.data.MetadataMap
+import tus4s.core.data.UploadRequest
 import tus4s.pg.impl.DbTask
 import tus4s.pg.impl.syntax.*
 import wvlet.airframe.ulid.ULID
@@ -15,7 +21,7 @@ trait DbTestBase extends CatsEffectSuite:
     url = s"jdbc:postgresql://localhost:$dbPort/postgres"
   )
 
-  private def withDb(name: String): Resource[IO, Unit] =
+  def withDb(name: String): Resource[IO, Unit] =
     val createTask = DbTask.prepare[IO](s"create database $name").update.void
     val dropTask = DbTask.prepare[IO](s"drop database $name").update.void
     val p1 = IO.println(s"Created db $name...")
@@ -24,18 +30,36 @@ trait DbTestBase extends CatsEffectSuite:
       connBase.use(dropTask.run) >> p2
     )
 
-  private val createRandomDB: Resource[IO, String] =
-    for
-      c <- connBase
-      name <- Resource
-        .eval(IO(ULID.newULIDString.takeRight(8).toLowerCase()))
-        .map(e => s"db_$e")
-      _ <- withDb(name)
-    yield name
+  val newDbName = IO(s"db_${ULID.newULIDString.takeRight(8).toLowerCase()}")
 
-  val randomDB: ConnectionResource[IO] = createRandomDB.flatMap(db =>
-    ConnectionResource.simple[IO](s"jdbc:postgresql://localhost:$dbPort/$db")
-  )
+  def makeConnectionResource(dbname: String) =
+    ConnectionResource.simple[IO](s"jdbc:postgresql://localhost:$dbPort/$dbname")
+
+  private val createRandomDB: Resource[IO, String] =
+    Resource.eval(newDbName).flatTap(withDb)
+
+  val randomDB: ConnectionResource[IO] =
+    createRandomDB.flatMap(db => makeConnectionResource(db))
+
+  def dbOf(name: String): ConnectionResource[IO] =
+    withDb(name).flatMap(_ => makeConnectionResource(name))
 
   def withRandomDB[A](t: DbTask[IO, A]): IO[A] =
     randomDB.use(t.run)
+
+  def uploadRequestFor(data: String) =
+    val bytes = data.getBytes()
+    val len = bytes.length.toLong
+    UploadRequest[IO](
+      offset = ByteSize.zero,
+      contentLength = Some(ByteSize.bytes(len)),
+      uploadLength = Some(ByteSize.bytes(len)),
+      checksum = None,
+      isPartial = false,
+      meta = MetadataMap.empty.withFilename("hello.txt"),
+      hasContent = len > 0,
+      data = Stream.chunk(Chunk.array(bytes)).covary[IO]
+    )
+
+  val sameConnection: DbTask[IO, ConnectionResource[IO]] =
+    DbTask(conn => IO(Resource.pure[IO, Connection](conn)))

@@ -26,8 +26,16 @@ final case class UploadRequest[F[_]](
   def withPartial(flag: Boolean): UploadRequest[F] =
     copy(isPartial = flag)
 
-object UploadRequest:
+  def toStateNoContent(id: UploadId) =
+    UploadState(
+      id,
+      ByteSize.zero,
+      uploadLength,
+      meta,
+      Option.when(isPartial)(ConcatType.Partial)
+    )
 
+object UploadRequest:
   final case class Checksum(algorithm: ChecksumAlgorithm, checksum: ByteVector):
     def asString: String = s"${algorithm.name}:${checksum.toHex}"
 
