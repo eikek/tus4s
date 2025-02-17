@@ -3,6 +3,7 @@ package tus4s.pg
 import cats.effect.*
 import cats.syntax.all.*
 
+import scodec.bits.ByteVector
 import tus4s.core.data.*
 import tus4s.pg.impl.DbTask
 import wvlet.airframe.ulid.ULID
@@ -11,6 +12,11 @@ class PgTasksTest extends DbTestBase:
   val table = PgTusTable[IO]("tus_files")
   val tasks = PgTasks[IO]("tus_files")
   val chunkSize = ByteSize.kb(8)
+
+  def uploadRequestFor(data: String) =
+    UploadRequest
+      .fromByteVector[IO](ByteVector.view(data.getBytes))
+      .copy(meta = MetadataMap.empty.withFilename("hello.txt"))
 
   test("find non existing file"):
     withRandomDB {

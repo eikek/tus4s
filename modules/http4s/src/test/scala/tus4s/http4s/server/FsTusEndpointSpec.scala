@@ -6,12 +6,12 @@ import fs2.io.file.{Files, Path}
 import tus4s.core.data.ByteSize
 import tus4s.fs.FsTusProtocol
 
-class TusEndpointSpec
+class FsTusEndpointSpec
     extends TusEndpointSuite(
-      TusEndpointSpec.createFsProtocol.map(p => TusEndpointBuilder(p).build)
+      FsTusEndpointSpec.createFsProtocol.map(p => TusEndpointBuilder(p).build)
     )
 
-object TusEndpointSpec:
+object FsTusEndpointSpec:
 
   val createFsProtocol: Resource[IO, FsTusProtocol[IO]] =
     val base: Option[Path] = None

@@ -27,7 +27,8 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
 
   val config: TusConfig = endpoint.use(e => IO.pure(e.config)).unsafeRunSync()
 
-  def makeClient = IO(endpointFixture()).map(_.app).map(Client.fromHttpApp[IO])
+  def makeClient: IO[Client[IO]] =
+    IO(endpointFixture()).map(_.app).map(Client.fromHttpApp[IO])
 
   test("not found responses"):
     for
@@ -89,7 +90,12 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .putHeaders(TusResumable.V1_0_0)
       _ <- client.run(uploadReq).use { r =>
         IO:
-          assertEquals(r.status, Status.NoContent)
+          val body = r.bodyText.compile.string.unsafeRunSync()
+          assertEquals(
+            r.status,
+            Status.NoContent,
+            s"Expected NoConent, got ${r.status} ($body)"
+          )
           assertEquals(
             r.headers.get[UploadOffset].map(_.offset),
             Some(ByteSize.bytes(11))
@@ -119,7 +125,12 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .putHeaders(TusResumable.V1_0_0)
       _ <- client.run(uploadReq1).use { r =>
         IO:
-          assertEquals(r.status, Status.NoContent)
+          val body = r.bodyText.compile.string.unsafeRunSync()
+          assertEquals(
+            r.status,
+            Status.NoContent,
+            s"Expected NoContent, got: ${r.status} ($body)"
+          )
           assertEquals(
             r.headers.get[UploadOffset].map(_.offset),
             Some(ByteSize.bytes(5))
@@ -237,24 +248,69 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
       _ <- client.run(uploadReq).use(assertStatus(Headers.checksumMismatch))
     yield ()
 
-  test("max upload size"):
+  test("create too large upload"):
     assume(
-      config.maxSize.exists(_ <= ByteSize.bytes(100)),
+      config.maxSize.exists(_ <= ByteSize.kb(100)),
       "Only max-size < 100k supported"
     )
     for
       client <- makeClient
-      // first simply ask to create a too large upload
+      // ask to create a too large upload
+      // the request is rejected immediately before it hits the protocol impl
       c1 = Method.POST(baseUri).putHeaders(UploadLength(ByteSize.mb(1)))
       _ <- client
         .run(c1)
         .attempt
         .map:
-          case Right(_) => fail("expected request to fail")
+          case Right(res) => fail(s"expected request to fail, got: ${res.status}")
           case Left(err) =>
+            println(s"$err")
             assertEquals(
               err,
               TusDecodeFailure.MaxSizeExceeded(config.maxSize.get, ByteSize.mb(1))
+            )
+        .use_
+
+      // ask for a smal upload, but send too many bytes
+      // this can only be validated after reading the body
+      data = ByteVector.fill(config.maxSize.get.toBytes + 2)('a'.toByte)
+      c2 = Method
+        .POST(data, baseUri)
+        .putHeaders(UploadLength(ByteSize.bytes(11)))
+        .putHeaders(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset.zero)
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client
+        .run(c2)
+        .attempt
+        .map:
+          case Right(res) =>
+            assertEquals(res.status, Status.PayloadTooLarge)
+          case Left(err) =>
+            fail(s"Expected request to succeed with a 413 status. Got: $err")
+        .use_
+    yield ()
+
+  test("receive too large upload, advertised as small"):
+    assume(
+      config.maxSize.exists(_ <= ByteSize.kb(100)),
+      "Only max-size < 100k supported"
+    )
+    for
+      client <- makeClient
+      c1 = Method
+        .POST("hello".getBytes, baseUri)
+        .putHeaders(UploadLength(ByteSize.mb(10)))
+      _ <- client
+        .run(c1)
+        .attempt
+        .map:
+          case Right(res) => fail(s"expected request to fail, got: ${res.status}")
+          case Left(err) =>
+            println(s"$err")
+            assertEquals(
+              err,
+              TusDecodeFailure.MaxSizeExceeded(config.maxSize.get, ByteSize.mb(10))
             )
         .use_
 
@@ -274,12 +330,10 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         .run(uploadReq)
         .attempt
         .map:
-          case Right(_) => fail("expected request to fail")
+          case Right(res) =>
+            assertEquals(res.status, Status.PayloadTooLarge)
           case Left(err) =>
-            assertEquals(
-              err,
-              TusDecodeFailure.MaxSizeExceeded(config.maxSize.get, config.maxSize.get)
-            )
+            fail(s"Expected request to succeed with a 413 status. Got: $err")
         .use_
     yield ()
 

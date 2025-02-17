@@ -65,7 +65,7 @@ final class TusEndpoint[F[_]: Sync](
             .headers(Location(base / id))
             .withOffset(offset)
             .withExpires(expires)
-            .withTusResumable
+      .withTusResumable
 
   private def concatenate(req: ConcatRequest): F[Response[F]] =
     if (!Extension.hasConcat(config.extensions)) NotFound()
@@ -106,11 +106,11 @@ final class TusEndpoint[F[_]: Sync](
       resp <- tus
         .receive(id, input)
         .flatMap:
-          case ReceiveResult.NotFound => NotFound().withTusResumable
+          case ReceiveResult.NotFound => NotFound()
           case ReceiveResult.OffsetMismatch(current) =>
-            Conflict(s"Offset does not match, current is $current").withTusResumable
-          case ReceiveResult.UploadLengthMismatch =>
-            Conflict(s"Upload length has already been specified")
+            Conflict(s"Offset does not match, current is $current")
+          case ReceiveResult.UploadLengthMismatch(a, b) =>
+            Conflict(s"Upload length has already been specified ($a vs $b)")
           case ReceiveResult.UploadDone =>
             Conflict(s"Upload is already done")
           case ReceiveResult.ChecksumMismatch =>
@@ -121,9 +121,10 @@ final class TusEndpoint[F[_]: Sync](
               .toHttpResponse(req.httpVersion)
               .pure[F]
           case ReceiveResult.Success(newOffset, expires) =>
-            NoContent().withOffset(newOffset).withTusResumable.withExpires(expires)
+            NoContent().withOffset(newOffset).withExpires(expires)
           case ReceiveResult.UploadIsFinal =>
-            Forbidden("Patch against a final upload").withTusResumable
+            Forbidden("Patch against a final upload")
+        .withTusResumable
     } yield resp
 
   private def delete(id: UploadId): F[Response[F]] =

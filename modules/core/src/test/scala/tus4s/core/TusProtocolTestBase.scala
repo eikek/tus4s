@@ -11,7 +11,10 @@ import tus4s.core.data.ConcatRequest
 import tus4s.core.data.ConcatResult
 import tus4s.core.data.CreationResult
 import tus4s.core.data.Extension
+import tus4s.core.data.FileResult
 import tus4s.core.data.MetadataMap
+import tus4s.core.data.ReceiveResult
+import tus4s.core.data.UploadId
 import tus4s.core.data.UploadRequest
 import tus4s.core.data.Url
 
@@ -27,20 +30,21 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
       val req = UploadRequest
         .fromByteVector[IO](data)
         .withMeta(MetadataMap.Key.fileName, b("test.txt"))
-      tp.create(req).flatMap {
-        case CreationResult.Success(id, offset, expires) =>
-          assertEquals(offset, ByteSize.bytes(data.length))
-          assertEquals(expires, None)
+      tp.createSuccess(req).flatMap { case CreationResult.Success(id, offset, expires) =>
+        assertEquals(offset, ByteSize.bytes(data.length))
+        assertEquals(expires, None)
 
-          tp.find(id).map { file =>
-            assert(file.isDefined)
-            val f = file.get
-            assertEquals(f.getFileName, Some("test.txt"))
-            assert(f.hasContent)
-          }
+        tp.findFileWithContent(id)
+          .map(f => assertEquals(f.getFileName, Some("test.txt")))
+      }
+    }
 
-        case r =>
-          fail(s"Unexpected creation result: $r")
+  test("create: empty upload"):
+    tusProtocol(None).use { tp =>
+      val req = UploadRequest.fromByteVector[IO](ByteVector.empty)
+      tp.createSuccess(req).flatMap { case CreationResult.Success(id, offset, expires) =>
+        assertEquals(offset, ByteSize.zero)
+        tp.findFileWithoutContent(id)
       }
     }
 
@@ -72,6 +76,71 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
         case r =>
           fail(s"Unexpected upload result: $r")
       }
+    }
+
+  test("receive and load initial chunk"):
+    val data = b("hello world")
+    tusProtocol(None).use { tp =>
+      tp.createEmpty().flatMap { id =>
+        val req = UploadRequest.fromByteVector[IO](data)
+        tp.receive(id, req).flatMap {
+          case ReceiveResult.Success(size, _) =>
+            assertEquals(size, ByteSize.bytes(data.length))
+            tp.findFileWithContent(id).map(f => assertEquals(f.getFileName, None))
+
+          case r =>
+            fail(s"Unexpected receive result: $r")
+        }
+      }
+    }
+
+  test("receive two chunks"):
+    val data = b("hello world")
+    tusProtocol(None).use { tp =>
+      for
+        id <- tp.createEmpty()
+
+        req1 = UploadRequest
+          .fromByteVector[IO](data)
+          .copy(uploadLength = ByteSize.bytes(data.length * 2).some)
+        r1 <- tp.receiveSuccess(id, req1)
+        req2 = req1.copy(offset = r1.offset)
+        _ <- tp.receiveSuccess(id, req2)
+        file <- tp.findFileWithContent(id)
+        cnt <- file.data.through(fs2.text.utf8.decode).compile.string
+        _ = assertEquals(cnt, "hello world".repeat(2))
+      yield ()
+    }
+
+  test("no overwrite final upload"):
+    val data = b("hello")
+    tusProtocol(None).use { tp =>
+      for
+        id <- tp.createEmpty(_.copy(uploadLength = ByteSize.bytes(data.length).some))
+        req = UploadRequest.fromByteVector[IO](data)
+        r1 <- tp.receiveSuccess(id, req)
+        res <- tp.receive(id, req.copy(offset = r1.offset))
+        _ = res match
+          case ReceiveResult.UploadDone => ()
+          case _                        => fail(s"Unexpected receive result: $res")
+      yield ()
+    }
+
+  test("offset mismatch"):
+    val data = b("hello")
+    tusProtocol(None).use { tp =>
+      for
+        id <- tp.createEmpty()
+        req = UploadRequest
+          .fromByteVector[IO](data)
+          .copy(uploadLength = ByteSize.bytes(data.length + 2).some)
+        r1 <- tp.receiveSuccess(id, req)
+        res <- tp.receive(id, req.copy(offset = ByteSize.bytes(data.length - 1)))
+        _ = res match
+          case ReceiveResult.OffsetMismatch(offset) =>
+            assertEquals(offset, ByteSize.bytes(data.length))
+          case _ => fail(s"Unexpected receive result: $res")
+      yield ()
     }
 
   test("concatenate two files"):
@@ -143,3 +212,41 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
         _ <- tus.find(id).assertEquals(None)
       yield ()
     }
+
+  extension (self: TusProtocol[IO])
+    def createEmpty(
+        freq: UploadRequest[IO] => UploadRequest[IO] = identity
+    ): IO[UploadId] =
+      val req = freq(UploadRequest.fromByteVector[IO](ByteVector.empty))
+      self.create(req).map {
+        case CreationResult.Success(id, _, _) => id
+        case r                                => fail(s"Unexpected creation result: $r")
+      }
+
+    def findFileWithContent(id: UploadId): IO[FileResult[IO]] =
+      self.find(id).map { file =>
+        assert(file.isDefined)
+        val f = file.get
+        assert(f.hasContent)
+        f
+      }
+
+    def findFileWithoutContent(id: UploadId): IO[FileResult[IO]] =
+      self.find(id).map { file =>
+        assert(file.isDefined)
+        val f = file.get
+        assert(!f.hasContent)
+        f
+      }
+
+    def receiveSuccess(id: UploadId, req: UploadRequest[IO]): IO[ReceiveResult.Success] =
+      self.receive(id, req).map {
+        case r: ReceiveResult.Success => r
+        case r                        => fail(s"Unexpected receive result: $r")
+      }
+
+    def createSuccess(req: UploadRequest[IO]): IO[CreationResult.Success] =
+      self.create(req).map {
+        case r: CreationResult.Success => r
+        case r                         => fail(s"Unexpected creation result: $r")
+      }

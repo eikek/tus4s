@@ -72,6 +72,14 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
       ps.setString(2, id.value)
     }
 
+  def updateLength(id: UploadId, length: ByteSize): DbTask[F, Int] =
+    val sql =
+      s"""UPDATE "$table" SET file_length = ? WHERE id = ? AND file_length is NULL"""
+    DbTask.prepare(sql).updateWith { ps =>
+      ps.setLong(1, length.toBytes)
+      ps.setString(2, id.value)
+    }
+
   def findOid(id: UploadId): DbTask[F, Option[Long]] =
     val sql = s"""SELECT file_oid FROM "$table" WHERE id = ?"""
     DbTask

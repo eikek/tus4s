@@ -130,7 +130,7 @@ val http4s = project
     reStart / fullClasspath := (Test / fullClasspath).value,
     reStart / mainClass := Some("tus4s.http4s.server.ServerTest")
   )
-  .dependsOn(core, fs % "test->test")
+  .dependsOn(core, fs % "test->test", pg % "test->test")
 
 val updateReadme = inputKey[Unit]("Update readme")
 lazy val readme = project

@@ -1,6 +1,7 @@
 package tus4s.core.data
 
 import cats.data.NonEmptyList
+import cats.syntax.all.*
 import fs2.Chunk
 import fs2.Stream
 
@@ -16,6 +17,14 @@ final case class UploadRequest[F[_]](
     hasContent: Boolean,
     data: Stream[F, Byte]
 ):
+
+  def dataLimit(maxSize: Option[ByteSize]): Stream[F, Byte] =
+    maxSize match
+      case Some(ms) => data.take(ms.toBytes + 1)
+      case None     => data
+
+  def dataChunked(chunkSize: ByteSize, maxSize: Option[ByteSize]) =
+    dataLimit(maxSize).chunkN(chunkSize.toBytes.toInt, allowFewer = true)
 
   def withMeta(key: MetadataMap.Key, value: ByteVector): UploadRequest[F] =
     copy(meta = meta.withValue(key, value))
@@ -54,10 +63,10 @@ object UploadRequest:
     UploadRequest[F](
       offset = ByteSize.zero,
       contentLength = Some(ByteSize.bytes(bv.length)),
-      uploadLength = Some(ByteSize.bytes(bv.length)),
+      uploadLength = Some(ByteSize.bytes(bv.length)).filter(_ > ByteSize.zero),
       checksum = None,
       isPartial = false,
       meta = MetadataMap.empty,
-      hasContent = true,
+      hasContent = bv.nonEmpty,
       data = Stream.chunk(Chunk.byteVector(bv))
     )

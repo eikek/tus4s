@@ -9,7 +9,7 @@ import fs2.Stream
 import org.postgresql.largeobject.LargeObject
 import org.postgresql.largeobject.LargeObjectManager
 import tus4s.core.data.*
-import tus4s.core.data.UploadRequest
+import tus4s.core.internal.Validation
 import tus4s.pg.impl.syntax.*
 import tus4s.pg.impl.{DbTask, DbTaskS}
 
@@ -22,7 +22,7 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       chunkSize: ByteSize,
       maxSize: Option[ByteSize]
   ): DbTask[F, CreationResult] =
-    sizeExceeded(maxSize, req.uploadLength.orElse(req.contentLength)) match
+    Validation.validateCreate(req, maxSize) match
       case Some(r) => DbTask.pure(r)
       case None =>
         for
@@ -31,16 +31,62 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
 
           saved <-
             if (req.hasContent)
-              insertFile(id, req.data.chunkN(chunkSize.toBytes.toInt), maxSize)
-            else DbTask.pure(Right(ByteSize.zero))
-          res = saved.fold(identity, off => CreationResult.Success(id, off, None))
+              insertFile(id, req.dataChunked(chunkSize, maxSize), maxSize)
+            else DbTask.pure(ByteSize.zero)
+
+          res = Validation
+            .validateCreate(req.copy(uploadLength = saved.some), maxSize)
+            .getOrElse(CreationResult.Success(id, saved, None))
         yield res
+
+  def receiveChunk(
+      id: UploadId,
+      req: UploadRequest[F],
+      chunkSize: ByteSize,
+      maxSize: Option[ByteSize]
+  ): DbTask[F, ReceiveResult] =
+    (for
+      (state, oidOpt) <- fileTable.find(id).mapF(OptionT.apply)
+      res <- Validation
+        .validateReceive(state, req, maxSize)
+        .map(DbTask.pure[F, ReceiveResult])
+        .getOrElse {
+          receiveChunk0(id, oidOpt, state, req.dataChunked(chunkSize, maxSize)).map(
+            size =>
+              Validation
+                .validateReceive(state, req.copy(contentLength = size.some), maxSize)
+                .getOrElse(ReceiveResult.Success(size, None))
+          )
+        }
+        .mapF(OptionT.liftF)
+      _ <- req.uploadLength
+        .map(fileTable.updateLength(id, _))
+        .getOrElse(DbTask.pure(0))
+        .mapF(OptionT.liftF)
+    yield res).mapF(_.getOrElse(ReceiveResult.NotFound))
+
+  def receiveChunk0(
+      id: UploadId,
+      oidOpt: Option[Long],
+      state: UploadState,
+      data: Stream[F, Chunk[Byte]]
+  ): DbTask[F, ByteSize] =
+    for
+      lom <- DbTask.loManager[F]
+      oid <- oidOpt.map(DbTask.pure).getOrElse {
+        DbTask
+          .createLargeObject(lom)
+          .flatTap(oid => fileTable.updateOid(id, oid))
+          .inTx
+      }
+      size <- insertSafe(id, data, oid, lom, state.offset)
+    yield size
 
   def insertFile(
       id: UploadId,
       data: Stream[F, Chunk[Byte]],
       maxSize: Option[ByteSize]
-  ): DbTask[F, Either[CreationResult, ByteSize]] =
+  ): DbTask[F, ByteSize] =
     for
       lom <- DbTask.loManager[F]
       oid <- DbTask
@@ -48,26 +94,21 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
         .flatTap(oid => fileTable.updateOid(id, oid))
         .inTx
 
-      size <- insertSafe(id, data, oid, lom, maxSize)
-      res = maxSize match
-        case Some(ms) if ms.toBytes >= size =>
-          Left(CreationResult.UploadTooLarge(ms, ByteSize.bytes(size)))
-        case _ => Right(ByteSize.bytes(size))
-    yield res
+      size <- insertSafe(id, data, oid, lom, ByteSize.zero)
+    yield size
 
   def insertSafe(
       id: UploadId,
       data: Stream[F, Chunk[Byte]],
       oid: Long,
       lom: LargeObjectManager,
-      maxSize: Option[ByteSize]
-  ): DbTask[F, Long] =
+      pos: ByteSize
+  ): DbTask[F, ByteSize] =
     DbTask { conn =>
       data
-        .evalScan(0L) { (acc, chunk) =>
+        .evalScan(pos) { (acc, chunk) =>
           insertChunk(id, lom, oid, chunk)(acc).inTx.run(conn)
         }
-        .takeWhile(size => maxSize.forall(_.toBytes > size))
         .compile
         .lastOrError
     }
@@ -77,16 +118,16 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       lom: LargeObjectManager,
       oid: Long,
       chunk: Chunk[Byte]
-  )(pos: Long): DbTask[F, Long] =
+  )(pos: ByteSize): DbTask[F, ByteSize] =
     (for
       obj <- DbTask.openLoWriteR(lom, oid)
       _ <- DbTask.delay { _ =>
         val bs = chunk.toArraySlice
-        obj.seek64(pos, LargeObject.SEEK_SET)
+        obj.seek64(pos.toBytes, LargeObject.SEEK_SET)
         obj.write(bs.values, bs.offset, bs.size)
       }.resource
-      nextOffset = pos + chunk.size
-      _ <- fileTable.updateOffset(id, ByteSize.bytes(nextOffset)).resource
+      nextOffset = pos + ByteSize.bytes(chunk.size)
+      _ <- fileTable.updateOffset(id, nextOffset).resource
     yield nextOffset).evaluated
 
   def findFile(
@@ -147,10 +188,3 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
         if (size.exists(_ <= bytesRead)) Chunk.empty.pure[F]
         else Sync[F].blocking(Chunk.array(lo.read(remaining)))
     yield next
-
-  def sizeExceeded(max: Option[ByteSize], cur: Option[ByteSize]) =
-    for
-      m <- max
-      c <- cur
-      if m < c
-    yield CreationResult.UploadTooLarge(m, c)

@@ -29,7 +29,8 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
     cfg.db.use(tasks.findFile(id, cfg.chunkSize, cfg.db).run)
 
   /** Receive a chunk of data from the given offset. */
-  def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] = ???
+  def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] =
+    cfg.db.use(tasks.receiveChunk(id, chunk, cfg.chunkSize, cfg.maxSize).run)
 
   /** Create a new upload, possibly empty. */
   def create(req: UploadRequest[F]): F[CreationResult] =
@@ -40,7 +41,8 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
     cfg.db.use(table.delete(id).inTx.run)
 
   /** Concatenate chunks into a final upload, may remove partial uploads. */
-  def concat(req: ConcatRequest): F[ConcatResult] = ???
+  def concat(req: ConcatRequest): F[ConcatResult] =
+    Sync[F].raiseError(new Exception("not implemented"))
 
 object PgTusProtocol:
 
