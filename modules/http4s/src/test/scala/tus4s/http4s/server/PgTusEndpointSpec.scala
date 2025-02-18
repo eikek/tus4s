@@ -21,7 +21,7 @@ object PgTusEndpointSpec extends DbTestBase:
     dbName <- Resource.eval(newDbName)
     _ <- withDb(dbName)
     cr = makeConnectionResource(dbName)
-    cfg = PgConfig(cr, "tus_files", Some(ByteSize.kb(70)))
+    cfg = PgConfig(cr, "tus_files", Some(ByteSize.kb(70)), enableConcat = true)
   yield cfg
 
   val createPgProtocol: Resource[IO, TusProtocol[IO]] =

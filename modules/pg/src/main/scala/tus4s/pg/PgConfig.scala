@@ -6,5 +6,6 @@ final case class PgConfig[F[_]](
     db: ConnectionResource[F],
     table: String,
     maxSize: Option[ByteSize] = None,
-    chunkSize: ByteSize = ByteSize.kb(64)
+    chunkSize: ByteSize = ByteSize.kb(64),
+    enableConcat: Boolean = false
 )

@@ -172,12 +172,15 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       id: UploadId,
       chunkSize: ByteSize,
       makeConn: ConnectionResource[F],
-      makeUrl: UploadId => Url
+      makeUrl: UploadId => Url,
+      enableConcat: Boolean
   ) =
     findFile(id, chunkSize, makeConn)
       .flatMap {
         case r @ Some(_) => DbTask.pure(r)
-        case None        => findConcatFile(id, chunkSize, makeConn, makeUrl)
+        case None =>
+          if (enableConcat) findConcatFile(id, chunkSize, makeConn, makeUrl)
+          else DbTask.pure(None)
       }
 
   def loadFile(oid: Long, range: ByteRange, chunkSize: ByteSize): DbTaskS[F, Byte] =

@@ -5,6 +5,7 @@ import cats.syntax.all.*
 
 import tus4s.core.*
 import tus4s.core.data.*
+import tus4s.pg.impl.DbTask
 import tus4s.pg.impl.syntax.*
 
 class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
@@ -12,21 +13,26 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
   private val table = PgTusTable[F](cfg.table)
 
   def init: F[Unit] =
-    cfg.db.use((table.create >> table.createConcat).run)
+    cfg.db.use(
+      (table.create >> Option
+        .when(cfg.enableConcat)(table.createConcat)
+        .getOrElse(DbTask.pure(()))).run
+    )
 
   /** Configuration supported by this protocol implementation. */
   def config: TusConfig = TusConfig(
     extensions = Set(
       Extension.Creation(CreationOptions.all),
-      Extension.Termination,
-      Extension.Concatenation
-    ),
+      Extension.Termination
+    ) ++ Option.when(cfg.enableConcat)(Extension.Concatenation).toSet,
     maxSize = cfg.maxSize
   )
 
   /** Look up an upload and return its current state. */
   def find(id: UploadId): F[Option[FileResult[F]]] =
-    cfg.db.use(tasks.find(id, cfg.chunkSize, cfg.db, id => Url(id.value)).run)
+    cfg.db.use(
+      tasks.find(id, cfg.chunkSize, cfg.db, id => Url(id.value), cfg.enableConcat).run
+    )
 
   /** Receive a chunk of data from the given offset. */
   def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] =
