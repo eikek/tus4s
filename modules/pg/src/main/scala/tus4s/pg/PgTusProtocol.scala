@@ -12,14 +12,14 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
   private val table = PgTusTable[F](cfg.table)
 
   def init: F[Unit] =
-    cfg.db.use(table.create.run)
+    cfg.db.use((table.create >> table.createConcat).run)
 
   /** Configuration supported by this protocol implementation. */
   def config: TusConfig = TusConfig(
     extensions = Set(
       Extension.Creation(CreationOptions.all),
-      Extension.Termination
-//      Extension.Concatenation
+      Extension.Termination,
+      Extension.Concatenation
     ),
     maxSize = cfg.maxSize
   )
@@ -42,7 +42,7 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
 
   /** Concatenate chunks into a final upload, may remove partial uploads. */
   def concat(req: ConcatRequest): F[ConcatResult] =
-    Sync[F].raiseError(new Exception("not implemented"))
+    cfg.db.use(tasks.concatFiles(req).inTx.run)
 
 object PgTusProtocol:
 

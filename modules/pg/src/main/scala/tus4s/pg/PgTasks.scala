@@ -1,5 +1,6 @@
 package tus4s.pg
 
+import cats.data.NonEmptyList
 import cats.data.OptionT
 import cats.effect.*
 import cats.syntax.all.*
@@ -188,3 +189,28 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
         if (size.exists(_ <= bytesRead)) Chunk.empty.pure[F]
         else Sync[F].blocking(Chunk.array(lo.read(remaining)))
     yield next
+
+  def concatFiles(req: ConcatRequest) =
+    val entries =
+      req.ids.toList
+        .traverse(id =>
+          fileTable.find(id).map {
+            case Some(state, Some(_)) if state.isPartial => Right(state)
+            case _                                       => Left(id)
+          }
+        )
+        .map(_.partitionMap(identity))
+    entries.flatMap {
+      case (Nil, parts) =>
+        for
+          id <- DbTask.liftF(UploadId.randomULID[F])
+          _ <- fileTable.insertConcat(id, req.meta)
+          _ <- fileTable.insertConcatParts(
+            id,
+            NonEmptyList.fromListUnsafe(parts.map(_.id))
+          )
+        yield ConcatResult.Success(id)
+
+      case (missing, _) =>
+        DbTask.pure(ConcatResult.PartsNotFound(NonEmptyList.fromListUnsafe(missing)))
+    }

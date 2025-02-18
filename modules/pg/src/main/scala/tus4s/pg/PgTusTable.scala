@@ -2,18 +2,23 @@ package tus4s.pg
 
 import java.sql.Types
 
+import cats.data.NonEmptyList
+import cats.data.NonEmptyVector
+import cats.data.OptionT
 import cats.effect.*
 import cats.syntax.all.*
 
 import tus4s.core.data.ByteSize
 import tus4s.core.data.ConcatType
 import tus4s.core.data.MetadataMap
+import tus4s.core.data.Url
 import tus4s.core.data.{UploadId, UploadState}
 import tus4s.pg.impl.DbTask
 import tus4s.pg.impl.syntax.*
 
 private[pg] class PgTusTable[F[_]: Sync](table: String):
-
+  private val concatTable: String = s"${table}_concat"
+  private val concatFilesTable: String = s"${table}_concat_parts"
   private val createStatement =
     s"""CREATE TABLE IF NOT EXISTS "$table" (
        |  id varchar not null primary key,
@@ -25,8 +30,30 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
        |  inserted_at timestamptz default now()
        |)""".stripMargin
 
+  private val createConcatStatement =
+    s"""CREATE TABLE IF NOT EXISTS "$concatTable" (
+       |  id varchar not null primary key,
+       |  meta_data text not null
+       |)""".stripMargin
+
+  private val createConcatFilesStatement =
+    s"""CREATE TABLE IF NOT EXISTS "$concatFilesTable" (
+       |  id bigint GENERATED ALWAYS AS IDENTITY NOT NULL,
+       |  file_id varchar not null,
+       |  part_id varchar not null,
+       |  part_index int not null,
+       |  CONSTRAINT file_id_fk FOREIGN KEY("file_id") REFERENCES "$concatTable"("id") ON DELETE CASCADE,
+       |  CONSTRAINT part_id_fk FOREIGN KEY("part_id") REFERENCES "$table"("id") ON DELETE CASCADE
+       |)""".stripMargin
+
   val create: DbTask[F, Unit] =
     DbTask.prepare(createStatement).update.void
+
+  val createConcat: DbTask[F, Unit] =
+    for
+      _ <- DbTask.prepare(createConcatStatement).update.void
+      _ <- DbTask.prepare(createConcatFilesStatement).update.void
+    yield ()
 
   def insert(e: UploadState): DbTask[F, Int] =
     val sql =
@@ -43,11 +70,29 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
         case None    => ps.setNull(5, Types.VARCHAR)
     }
 
+  def insertConcat(id: UploadId, meta: MetadataMap) =
+    val sql = s"""INSERT INTO "$concatTable" (id, meta_data) VALUES (?, ?)"""
+    DbTask.prepare(sql).updateWith { ps =>
+      ps.setString(1, id.value)
+      ps.setString(2, meta.encoded)
+    }
+
+  def insertConcatParts(id: UploadId, parts: NonEmptyList[UploadId]) =
+    val sql =
+      s"""INSERT INTO "$concatFilesTable" (file_id, part_id, part_index) VALUES (?, ?, ?)"""
+    val prepared = DbTask.prepare(sql)
+    parts.toList.zipWithIndex.traverse { case (partId, idx) =>
+      prepared.updateWith { ps =>
+        ps.setString(1, id.value)
+        ps.setString(2, partId.value)
+        ps.setInt(3, idx)
+      }
+    }.void
+
   def find(id: UploadId): DbTask[F, Option[(UploadState, Option[Long])]] =
     val sql =
-      s"""SELECT id, file_offset, file_length, meta_data, concat_type, file_oid FROM "$table" WHERE id = ?"""
+      s"""SELECT file_offset, file_length, meta_data, concat_type, file_oid FROM "$table" WHERE id = ?"""
     DbTask.prepare(sql).queryWith(_.setString(1, id.value)).readOption { rs =>
-      val id = UploadId.unsafeFromString(rs.stringColumnRequire("id"))
       val meta = MetadataMap
         .parseTus(rs.stringColumnRequire("meta_data"))
         .fold(sys.error, identity)
@@ -57,6 +102,56 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
         rs.stringColumn("concat_type").map(c => ConcatType.unsafeFromString(c))
       (UploadState(id, offset, len, meta, concatType), rs.longColumn("file_oid"))
     }
+
+  def findConcat(id: UploadId, makeUrl: UploadId => Url) =
+    val sql1 =
+      s"""SELECT
+         | f.meta_data,
+         | (SELECT SUM(e.file_length) FROM "$concatFilesTable" p INNER JOIN "$table" e WHERE e.id = p.part_id WHERE p.file_id = ?) AS file_length
+         | FROM "$concatTable" f
+         | WHERE f.id = ?
+    """.stripMargin
+
+    val sql2 = s"""SELECT e.id as id, e.file_oid as file_oid
+                  | FROM "$table" e
+                  | INNER JOIN "$concatFilesTable" p ON p.part_id = e.id
+                  | INNER JOIN "$concatTable" f ON f.id = p.file_id
+                  | WHERE f.id = ?
+                  | ORDER BY p.part_index ASC
+    """.stripMargin
+
+    val envelope =
+      DbTask
+        .prepare(sql1)
+        .queryWith { ps =>
+          ps.setString(1, id.value)
+          ps.setString(2, id.value)
+        }
+        .readOption { rs =>
+          val meta = MetadataMap
+            .parseTus(rs.stringColumnRequire("meta_data"))
+            .fold(sys.error, identity)
+          val len = ByteSize.bytes(rs.longColumnRequire("file_length"))
+          (len, meta)
+        }
+
+    val parts = DbTask.prepare(sql2).queryWith(_.setString(1, id.value)).readMany { rs =>
+      val id = UploadId.unsafeFromString(rs.stringColumnRequire("id"))
+      val oid = rs.longColumnRequire("file_oid")
+      (makeUrl(id), oid)
+    }
+    (for
+      (len, meta) <- envelope.mapF(OptionT.apply)
+      prs <- parts.mapF(OptionT.liftF)
+      prsNel <- DbTask.liftF(OptionT.fromOption[F](NonEmptyVector.fromVector(prs)))
+      state = UploadState(
+        id,
+        len,
+        len.some,
+        meta,
+        ConcatType.Final(prsNel.map(_._1).toNonEmptyList).some
+      )
+    yield (state, prsNel.map(_._2))).mapF(_.value)
 
   def updateOffset(id: UploadId, offset: ByteSize) =
     val sql = s"""UPDATE "$table" SET file_offset = ? WHERE id = ?"""

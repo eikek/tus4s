@@ -3,6 +3,8 @@ package tus4s.pg.impl
 import java.sql.PreparedStatement
 import java.sql.ResultSet
 
+import scala.collection.immutable.VectorBuilder
+
 import cats.data.Kleisli
 import cats.effect.*
 import cats.syntax.all.*
@@ -31,6 +33,18 @@ object syntax {
   extension [F[_]: Sync](self: DbTaskR[F, ResultSet])
     def readOption[A](f: ResultSet => A): DbTask[F, Option[A]] =
       self.mapF(_.use(rs => Sync[F].blocking(if (rs.next()) Some(f(rs)) else None)))
+
+    def readMany[A](f: ResultSet => A): DbTask[F, Vector[A]] =
+      self.mapF(
+        _.use(rs =>
+          Sync[F].blocking {
+            val builder = VectorBuilder[A]()
+            while (rs.next())
+              builder.addOne(f(rs))
+            builder.result()
+          }
+        )
+      )
 
   extension [F[_]: MonadCancelThrow, A](self: DbTaskR[F, A])
     def exec_(c: ConnectionResource[F]): F[A] =
