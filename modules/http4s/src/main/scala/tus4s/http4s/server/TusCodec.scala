@@ -97,8 +97,8 @@ object TusCodec:
     val d2 = forConcatFinal[F](cfg, baseUri).map(_.asRight[UploadRequest[F]])
     EntityDecoder.decodeBy(MediaRange.`*/*`) { req =>
       req.headers.get[UploadConcat] match
-        case Some(_) => d2.decode(req, false)
-        case None    => d1.decode(req, false)
+        case Some(UploadConcat(ConcatType.Final(_))) => d2.decode(req, false)
+        case _                                       => d1.decode(req, false)
     }
     // d1.orElse(d2) doesn't work because it dispatches on mediatype ...
 
@@ -179,15 +179,19 @@ object TusCodec:
       val uploadLen = validateDeferLength(cfg, creation, req)
       val meta =
         req.headers.get[UploadMetadata].map(_.decoded).getOrElse(MetadataMap.empty)
+      val partial = validateUploadConcat(cfg, req.headers.get[UploadConcat])
+        .map(_.exists(_.isPartial))
 
       EitherT.fromEither(
-        for ulen <- uploadLen
+        for
+          ulen <- uploadLen
+          part <- partial
         yield UploadRequest(
           offset = ByteSize.zero,
           contentLength = Some(ByteSize.zero),
           uploadLength = ulen,
           checksum = None,
-          isPartial = false,
+          isPartial = part,
           meta = meta,
           hasContent = false,
           Stream.empty

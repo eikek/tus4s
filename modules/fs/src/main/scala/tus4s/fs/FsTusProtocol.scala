@@ -61,8 +61,7 @@ final class FsTusProtocol[F[_]: Sync: Files](
           .getOrElse {
             val newState = state.copy(
               offset = temp.length + state.offset,
-              length = state.length.orElse(chunk.uploadLength),
-              concatType = Option.when(chunk.isPartial)(ConcatType.Partial)
+              length = state.length.orElse(chunk.uploadLength)
             )
             val checksumMismatch =
               OptionT
@@ -88,14 +87,7 @@ final class FsTusProtocol[F[_]: Sync: Files](
       .map(_.pure[F])
       .getOrElse:
         makeNewEntry.flatMap { e =>
-          val stateNoContent = UploadState(
-            e.id,
-            ByteSize.zero,
-            req.uploadLength,
-            req.meta,
-            Option.when(req.isPartial)(ConcatType.Partial)
-          )
-
+          val stateNoContent = req.toStateNoContent(e.id)
           if (req.hasContent)
             e.writeChunk(req.dataLimit(maxSize)).use { temp =>
               Validation.validateCreate(

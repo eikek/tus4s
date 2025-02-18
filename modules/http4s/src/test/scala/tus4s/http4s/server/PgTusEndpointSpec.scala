@@ -10,7 +10,9 @@ import tus4s.pg.PgTusProtocol
 
 class PgTusEndpointSpec
     extends TusEndpointSuite(
-      PgTusEndpointSpec.createPgProtocol.map(p => TusEndpointBuilder(p).build)
+      PgTusEndpointSpec.createPgProtocol.map(p =>
+        TusEndpointBuilder(p).withRetrieve(Retrieve.simpleGet[IO]).build
+      )
     )
 
 object PgTusEndpointSpec extends DbTestBase:

@@ -20,6 +20,8 @@ object UploadConcat:
   def createFinal(uris: NonEmptyList[Uri]): UploadConcat =
     UploadConcat(ConcatType.Final(uris.map(u => Url(u.renderString))))
 
+  val partial: UploadConcat = UploadConcat(ConcatType.Partial)
+
   given Header[UploadConcat, Header.Single] =
     Header.create(name, _.render, parse)
 

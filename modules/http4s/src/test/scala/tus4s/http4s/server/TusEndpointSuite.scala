@@ -116,7 +116,11 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
     for
       client <- makeClient
       meta = MetadataMap.empty.withFilename("test.txt")
-      uploadUri <- createUpload(client, ByteSize.bytes(11), meta)
+      uploadUri <- createUpload(
+        client,
+        ByteSize.bytes(11),
+        _.putHeaders(UploadMetadata(meta))
+      )
 
       uploadReq1 = Method
         .PATCH("hello".getBytes, uploadUri)
@@ -385,18 +389,33 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
     assume(Extension.hasConcat(config.extensions))
     for
       client <- makeClient
-      uri1 <- createUpload(client, ByteSize.bytes(6))
-      uri2 <- createUpload(client, ByteSize.bytes(5))
+      uri1 <- createUpload(client, ByteSize.bytes(6), _.putHeaders(UploadConcat.partial))
+      uri2 <- createUpload(client, ByteSize.bytes(5), _.putHeaders(UploadConcat.partial))
 
       uploadReq = Method
         .PATCH("hello-".getBytes(), uri1)
         .withContentType(Headers.contentTypeOffsetOctetStream)
         .putHeaders(UploadOffset(ByteSize.zero))
-        .putHeaders(UploadConcat(ConcatType.Partial))
         .putHeaders(TusResumable.V1_0_0)
       _ <- client.run(uploadReq).use(assertStatus(Status.NoContent))
       _ <- client
         .run(Method.HEAD(uri1))
+        .map { r =>
+          assertEquals(
+            r.headers.get[UploadConcat],
+            Some(UploadConcat.partial)
+          )
+        }
+        .use_
+
+      uploadReq2 = Method
+        .PATCH("world".getBytes(), uri2)
+        .withContentType(Headers.contentTypeOffsetOctetStream)
+        .putHeaders(UploadOffset(ByteSize.zero))
+        .putHeaders(TusResumable.V1_0_0)
+      _ <- client.run(uploadReq2).use(assertStatus(Status.NoContent))
+      _ <- client
+        .run(Method.HEAD(uri2))
         .map { r =>
           assertEquals(
             r.headers.get[UploadConcat],
@@ -405,19 +424,16 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         }
         .use_
 
-      uploadReq2 = Method
-        .PATCH("world".getBytes(), uri2)
-        .withContentType(Headers.contentTypeOffsetOctetStream)
-        .putHeaders(UploadConcat(ConcatType.Partial))
-        .putHeaders(UploadOffset(ByteSize.zero))
-        .putHeaders(TusResumable.V1_0_0)
-      _ <- client.run(uploadReq2).use(assertStatus(Status.NoContent))
-
       concat = Method
         .POST(baseUri)
         .putHeaders(UploadConcat.createFinal(NonEmptyList.of(uri1, uri2)))
       uri <- client.run(concat).use { r =>
-        assertEquals(r.status, Status.Created)
+        val body = r.bodyText.compile.string.unsafeRunSync()
+        assertEquals(
+          r.status,
+          Status.Created,
+          s"Expected status Created, got: ${r.status} ($body)"
+        )
         IO(r.headers.get[Location].get.uri)
       }
       _ <- checkUpload(client)(
@@ -427,6 +443,7 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
         ByteSize.bytes(11),
         false
       )
+      _ <- getUploadData(client, uri).assertEquals("hello-world")
     yield ()
 
   test("concat extension, but no partial uploads"):
@@ -459,20 +476,22 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
   def createUpload(
       client: Client[IO],
       size: ByteSize,
-      meta: MetadataMap = MetadataMap.empty
+      mod: Request[IO] => Request[IO] = identity
   ) =
-    val req = Method
-      .POST(baseUri)
-      .putHeaders(UploadLength(size))
-      .putHeaders(TusResumable.V1_0_0)
-    val create =
-      if (meta.isEmpty) req
-      else req.putHeaders(UploadMetadata(meta))
-    for uri <- client.run(create).use { r =>
+    val req = mod(
+      Method
+        .POST(baseUri)
+        .putHeaders(UploadLength(size))
+        .putHeaders(TusResumable.V1_0_0)
+    )
+    for uri <- client.run(req).use { r =>
         assertEquals(r.status, Status.Created)
         IO(r.headers.get[Location].get.uri)
       }
     yield uri
+
+  def getUploadData(client: Client[IO], uri: Uri): IO[String] =
+    client.run(Method.GET(uri)).use(_.bodyText.compile.string)
 
   def checkUpload(
       client: Client[IO]
@@ -480,7 +499,12 @@ abstract class TusEndpointSuite(endpoint: Resource[IO, Endpoint[IO]])
     client
       .run(Method.HEAD(uri))
       .map { r =>
-        assertEquals(r.status, Status.NoContent)
+        val body = r.bodyText.compile.string.unsafeRunSync()
+        assertEquals(
+          r.status,
+          Status.NoContent,
+          s"Expected status NoContent, got: ${r.status} ($body)"
+        )
         assertEquals(
           r.headers.get[UploadMetadata],
           if (meta.isEmpty) None else Some(UploadMetadata(meta))

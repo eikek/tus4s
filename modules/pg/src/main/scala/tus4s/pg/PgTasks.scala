@@ -131,6 +131,25 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       _ <- fileTable.updateOffset(id, nextOffset).resource
     yield nextOffset).evaluated
 
+  def findConcatFile(
+      id: UploadId,
+      chunkSize: ByteSize,
+      makeConn: ConnectionResource[F],
+      makeUrl: UploadId => Url
+  ) =
+    (for
+      (state, oids) <- fileTable.findConcat(id, makeUrl).mapF(OptionT.apply)
+      data = Stream
+        .resource(makeConn)
+        .flatMap(conn =>
+          Stream
+            .emits(oids.toVector)
+            .covary[F]
+            .flatMap(oid => loadFile(oid, ByteRange.All, chunkSize).run(conn))
+        )
+      res = FileResult(state, data, true, None, None)
+    yield res).mapF(_.value)
+
   def findFile(
       id: UploadId,
       chunkSize: ByteSize,
@@ -138,19 +157,30 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       range: ByteRange = ByteRange.All
   ): DbTask[F, Option[FileResult[F]]] =
     (for
-      stateOpt <- fileTable.find(id).mapF(OptionT.apply)
-      (state, oidOpt) = stateOpt
+      (state, oidOpt) <- fileTable.find(id).mapF(OptionT.apply)
       data = oidOpt match
         case Some(oid) =>
           Stream
             .resource(makeConn)
-            .flatMap(loadFile(oid, range, chunkSize.toBytes.toInt).run)
+            .flatMap(loadFile(oid, range, chunkSize).run)
         case None => Stream.empty
 
       res = FileResult(state, data, oidOpt.isDefined, None, None)
     yield res).mapF(_.value)
 
-  def loadFile(oid: Long, range: ByteRange, chunkSize: Int): DbTaskS[F, Byte] =
+  def find(
+      id: UploadId,
+      chunkSize: ByteSize,
+      makeConn: ConnectionResource[F],
+      makeUrl: UploadId => Url
+  ) =
+    findFile(id, chunkSize, makeConn)
+      .flatMap {
+        case r @ Some(_) => DbTask.pure(r)
+        case None        => findConcatFile(id, chunkSize, makeConn, makeUrl)
+      }
+
+  def loadFile(oid: Long, range: ByteRange, chunkSize: ByteSize): DbTaskS[F, Byte] =
     for
       lom <- DbTask.loManager.mapF(Stream.eval)
       _ <- DbTask.withAutoCommit(false).mapF(Stream.resource)
@@ -163,11 +193,11 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
               lo,
               range.fold(0L, _.offset.toBytes),
               range.fold(None, _.length.toBytes.some),
-              chunkSize
+              chunkSize.toBytes.toInt
             )
           )
           .repeat
-          .takeThrough(_.size == chunkSize)
+          .takeThrough(_.size == chunkSize.toBytes)
           .flatMap(Stream.chunk)
       }
     yield res

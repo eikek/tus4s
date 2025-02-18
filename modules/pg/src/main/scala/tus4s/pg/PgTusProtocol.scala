@@ -26,7 +26,7 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
 
   /** Look up an upload and return its current state. */
   def find(id: UploadId): F[Option[FileResult[F]]] =
-    cfg.db.use(tasks.findFile(id, cfg.chunkSize, cfg.db).run)
+    cfg.db.use(tasks.find(id, cfg.chunkSize, cfg.db, id => Url(id.value)).run)
 
   /** Receive a chunk of data from the given offset. */
   def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] =

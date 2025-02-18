@@ -8,7 +8,9 @@ import tus4s.fs.FsTusProtocol
 
 class FsTusEndpointSpec
     extends TusEndpointSuite(
-      FsTusEndpointSpec.createFsProtocol.map(p => TusEndpointBuilder(p).build)
+      FsTusEndpointSpec.createFsProtocol.map(p =>
+        TusEndpointBuilder(p).withRetrieve(Retrieve.simpleGet[IO]).build
+      )
     )
 
 object FsTusEndpointSpec:

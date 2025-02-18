@@ -12,9 +12,17 @@ import org.http4s.server.middleware.Logger
 import tus4s.core.TusProtocol
 import tus4s.core.data.ByteSize
 import tus4s.fs.FsTusProtocol
+import tus4s.pg.PgTusProtocol
+import tus4s.pg.PgConfig
+import tus4s.pg.ConnectionResource
 
 object ServerTest extends IOApp:
-  val tusBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
+  val pgBackend = PgTusProtocol.create[IO](PgConfig(
+    ConnectionResource.simple("jdbc:postgresql://localhost:5432/tus_test"), "tus_files"
+
+  ))
+  val fsBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
+  val tusBackend = pgBackend
 
   def tusEndpoint(backend: TusProtocol[IO]) =
     TusEndpointBuilder[IO](backend)

@@ -33,7 +33,8 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
   private val createConcatStatement =
     s"""CREATE TABLE IF NOT EXISTS "$concatTable" (
        |  id varchar not null primary key,
-       |  meta_data text not null
+       |  meta_data text not null,
+       |  inserted_at timestamptz default now()
        |)""".stripMargin
 
   private val createConcatFilesStatement =
@@ -103,11 +104,14 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
       (UploadState(id, offset, len, meta, concatType), rs.longColumn("file_oid"))
     }
 
-  def findConcat(id: UploadId, makeUrl: UploadId => Url) =
+  def findConcat(
+      id: UploadId,
+      makeUrl: UploadId => Url
+  ): DbTask[F, Option[(UploadState, NonEmptyVector[Long])]] =
     val sql1 =
       s"""SELECT
          | f.meta_data,
-         | (SELECT SUM(e.file_length) FROM "$concatFilesTable" p INNER JOIN "$table" e WHERE e.id = p.part_id WHERE p.file_id = ?) AS file_length
+         | (SELECT SUM(e.file_length) FROM "$concatFilesTable" p INNER JOIN "$table" e ON e.id = p.part_id WHERE p.file_id = ?) AS file_length
          | FROM "$concatTable" f
          | WHERE f.id = ?
     """.stripMargin
@@ -175,7 +179,7 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
       ps.setString(2, id.value)
     }
 
-  def findOid(id: UploadId): DbTask[F, Option[Long]] =
+  private def findOid(id: UploadId): DbTask[F, Option[Long]] =
     val sql = s"""SELECT file_oid FROM "$table" WHERE id = ?"""
     DbTask
       .prepare(sql)
