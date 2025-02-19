@@ -6,9 +6,12 @@ import java.sql.ResultSet
 import scala.collection.immutable.VectorBuilder
 
 import cats.data.Kleisli
+import cats.data.NonEmptyList
 import cats.effect.*
 import cats.syntax.all.*
 
+import tus4s.core.data.ConcatType
+import tus4s.core.data.Url
 import tus4s.pg.ConnectionResource
 
 object syntax {
@@ -84,4 +87,10 @@ object syntax {
 
     def longColumnRequire(name: String): Long =
       self.getLong(name)
+
+    def urlList(name: String): NonEmptyList[Url] =
+      val str = stringColumnRequire(name)
+      ConcatType.unsafeFromString(str) match
+        case ConcatType.Partial => sys.error("No partial urls stored in concat table")
+        case ConcatType.Final(partials) => partials
 }

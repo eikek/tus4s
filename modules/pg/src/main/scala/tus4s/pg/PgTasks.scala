@@ -131,14 +131,9 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       _ <- fileTable.updateOffset(id, nextOffset).resource
     yield nextOffset).evaluated
 
-  def findConcatFile(
-      id: UploadId,
-      chunkSize: ByteSize,
-      makeConn: ConnectionResource[F],
-      makeUrl: UploadId => Url
-  ) =
+  def findConcatFile(id: UploadId, chunkSize: ByteSize, makeConn: ConnectionResource[F]) =
     (for
-      (state, oids) <- fileTable.findConcat(id, makeUrl).mapF(OptionT.apply)
+      (state, oids) <- fileTable.findConcat(id).mapF(OptionT.apply)
       data = Stream
         .resource(makeConn)
         .flatMap(conn =>
@@ -172,14 +167,13 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       id: UploadId,
       chunkSize: ByteSize,
       makeConn: ConnectionResource[F],
-      makeUrl: UploadId => Url,
       enableConcat: Boolean
   ) =
     findFile(id, chunkSize, makeConn)
       .flatMap {
         case r @ Some(_) => DbTask.pure(r)
         case None =>
-          if (enableConcat) findConcatFile(id, chunkSize, makeConn, makeUrl)
+          if (enableConcat) findConcatFile(id, chunkSize, makeConn)
           else DbTask.pure(None)
       }
 
@@ -237,7 +231,7 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       case (Nil, parts) =>
         for
           id <- DbTask.liftF(UploadId.randomULID[F])
-          _ <- fileTable.insertConcat(id, req.meta)
+          _ <- fileTable.insertConcat(id, req.uris, req.meta)
           _ <- fileTable.insertConcatParts(
             id,
             NonEmptyList.fromListUnsafe(parts.map(_.id))

@@ -11,7 +11,7 @@ class PgTusProtocolTest extends TusProtocolTestBase with DbTestBase:
     dbName <- Resource.eval(newDbName)
     _ <- withDb(dbName)
     cr = makeConnectionResource(dbName)
-    cfg = PgConfig(cr, "tus_files", None, ByteSize.kb(2))
+    cfg = PgConfig(cr, "tus_files", None, ByteSize.kb(2), enableConcat = true)
   yield cfg
 
   def tusProtocol(maxSize: Option[ByteSize]) =

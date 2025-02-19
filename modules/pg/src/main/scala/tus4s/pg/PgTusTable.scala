@@ -34,6 +34,7 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
     s"""CREATE TABLE IF NOT EXISTS "$concatTable" (
        |  id varchar not null primary key,
        |  meta_data text not null,
+       |  part_uris varchar not null,
        |  inserted_at timestamptz default now()
        |)""".stripMargin
 
@@ -71,11 +72,13 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
         case None    => ps.setNull(5, Types.VARCHAR)
     }
 
-  def insertConcat(id: UploadId, meta: MetadataMap) =
-    val sql = s"""INSERT INTO "$concatTable" (id, meta_data) VALUES (?, ?)"""
+  def insertConcat(id: UploadId, uris: NonEmptyList[Url], meta: MetadataMap) =
+    val sql =
+      s"""INSERT INTO "$concatTable" (id, part_uris, meta_data) VALUES (?, ?, ?)"""
     DbTask.prepare(sql).updateWith { ps =>
       ps.setString(1, id.value)
-      ps.setString(2, meta.encoded)
+      ps.setString(2, ConcatType.Final(uris).render)
+      ps.setString(3, meta.encoded)
     }
 
   def insertConcatParts(id: UploadId, parts: NonEmptyList[UploadId]) =
@@ -104,19 +107,17 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
       (UploadState(id, offset, len, meta, concatType), rs.longColumn("file_oid"))
     }
 
-  def findConcat(
-      id: UploadId,
-      makeUrl: UploadId => Url
-  ): DbTask[F, Option[(UploadState, NonEmptyVector[Long])]] =
+  def findConcat(id: UploadId): DbTask[F, Option[(UploadState, NonEmptyVector[Long])]] =
     val sql1 =
       s"""SELECT
          | f.meta_data,
-         | (SELECT SUM(e.file_length) FROM "$concatFilesTable" p INNER JOIN "$table" e ON e.id = p.part_id WHERE p.file_id = ?) AS file_length
+         | (SELECT SUM(e.file_length) FROM "$concatFilesTable" p INNER JOIN "$table" e ON e.id = p.part_id WHERE p.file_id = ?) AS file_length,
+         | f.part_uris as part_uris
          | FROM "$concatTable" f
          | WHERE f.id = ?
     """.stripMargin
 
-    val sql2 = s"""SELECT e.id as id, e.file_oid as file_oid
+    val sql2 = s"""SELECT e.file_oid as file_oid
                   | FROM "$table" e
                   | INNER JOIN "$concatFilesTable" p ON p.part_id = e.id
                   | INNER JOIN "$concatTable" f ON f.id = p.file_id
@@ -136,26 +137,25 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
             .parseTus(rs.stringColumnRequire("meta_data"))
             .fold(sys.error, identity)
           val len = ByteSize.bytes(rs.longColumnRequire("file_length"))
-          (len, meta)
+          val uris = rs.urlList("part_uris")
+          (len, meta, uris)
         }
 
     val parts = DbTask.prepare(sql2).queryWith(_.setString(1, id.value)).readMany { rs =>
-      val id = UploadId.unsafeFromString(rs.stringColumnRequire("id"))
-      val oid = rs.longColumnRequire("file_oid")
-      (makeUrl(id), oid)
+      rs.longColumnRequire("file_oid")
     }
     (for
-      (len, meta) <- envelope.mapF(OptionT.apply)
-      prs <- parts.mapF(OptionT.liftF)
-      prsNel <- DbTask.liftF(OptionT.fromOption[F](NonEmptyVector.fromVector(prs)))
+      (len, meta, uris) <- envelope.mapF(OptionT.apply)
+      oids <- parts.mapF(OptionT.liftF)
+      oidsNel <- DbTask.liftF(OptionT.fromOption[F](NonEmptyVector.fromVector(oids)))
       state = UploadState(
         id,
         len,
         len.some,
         meta,
-        ConcatType.Final(prsNel.map(_._1).toNonEmptyList).some
+        ConcatType.Final(uris).some
       )
-    yield (state, prsNel.map(_._2))).mapF(_.value)
+    yield (state, oidsNel)).mapF(_.value)
 
   def updateOffset(id: UploadId, offset: ByteSize) =
     val sql = s"""UPDATE "$table" SET file_offset = ? WHERE id = ?"""

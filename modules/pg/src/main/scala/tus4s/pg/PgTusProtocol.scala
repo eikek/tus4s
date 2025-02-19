@@ -29,25 +29,18 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
     maxSize = cfg.maxSize
   )
 
-  /** Look up an upload and return its current state. */
   def find(id: UploadId): F[Option[FileResult[F]]] =
-    cfg.db.use(
-      tasks.find(id, cfg.chunkSize, cfg.db, id => Url(id.value), cfg.enableConcat).run
-    )
+    cfg.db.use(tasks.find(id, cfg.chunkSize, cfg.db, cfg.enableConcat).run)
 
-  /** Receive a chunk of data from the given offset. */
   def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] =
     cfg.db.use(tasks.receiveChunk(id, chunk, cfg.chunkSize, cfg.maxSize).run)
 
-  /** Create a new upload, possibly empty. */
   def create(req: UploadRequest[F]): F[CreationResult] =
     cfg.db.use(tasks.createUpload(req, cfg.chunkSize, cfg.maxSize).run)
 
-  /** Delete an upload (finished or not) */
   def delete(id: UploadId): F[Unit] =
     cfg.db.use(table.delete(id).inTx.run)
 
-  /** Concatenate chunks into a final upload, may remove partial uploads. */
   def concat(req: ConcatRequest): F[ConcatResult] =
     cfg.db.use(tasks.concatFiles(req).inTx.run)
 
