@@ -8,6 +8,8 @@ It is comprised of the following modules:
 - *core* provides some core structures for supporting the tus
   protocol
 - *fs* provides a backend for storing files on the local file system
+- *pg* provides a backend for storing files in a PostgreSQL database
+  using the large object feature
 - *http4s* depends on `http4s-dsl` to implement the tus protocol as
   server `HttpRoutes` value that you can mount in your endpoint
   hierarchy
@@ -26,13 +28,13 @@ import tus4s.fs.FsTusProtocol
 import tus4s.core.TusProtocol
 
 val tusBackend: IO[TusProtocol[IO]] = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
-// tusBackend: IO[TusProtocol[[A >: Nothing <: Any] =>> IO[A]]] = Map(
+// tusBackend: IO[TusProtocol[[A >: Nothing <: Any] => IO[A]]] = Map(
 //   ioe = Blocking(
 //     hint = Blocking,
-//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2788/0x00000008019098c8@160a3238,
+//     thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2790/0x00007fee9c8ff1c0@2e7e9897,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = tus4s.fs.FsTusProtocol$$$Lambda$2789/0x000000080190a470@16d8ee2e,
+//   f = tus4s.fs.FsTusProtocol$$$Lambda$2791/0x00007fee9c904000@753bfb4b,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```
@@ -81,16 +83,16 @@ yield ExitCode.Success
 //     ioe = Map(
 //       ioe = Blocking(
 //         hint = Blocking,
-//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2788/0x00000008019098c8@160a3238,
+//         thunk = fs2.io.file.FilesCompanionPlatform$AsyncFiles$$Lambda$2790/0x00007fee9c8ff1c0@2e7e9897,
 //         event = cats.effect.tracing.TracingEvent$StackTrace
 //       ),
-//       f = tus4s.fs.FsTusProtocol$$$Lambda$2789/0x000000080190a470@16d8ee2e,
+//       f = tus4s.fs.FsTusProtocol$$$Lambda$2791/0x00007fee9c904000@753bfb4b,
 //       event = cats.effect.tracing.TracingEvent$StackTrace
 //     ),
-//     f = repl.MdocSession$MdocApp$$Lambda$2790/0x000000080190d000@4c8a893e,
+//     f = repl.MdocSession$MdocApp$$Lambda$2792/0x00007fee9c901000@77d5a3ee,
 //     event = cats.effect.tracing.TracingEvent$StackTrace
 //   ),
-//   f = repl.MdocSession$MdocApp$$Lambda$2791/0x000000080190d3d0@2c56d4ab,
+//   f = repl.MdocSession$MdocApp$$Lambda$2793/0x00007fee9c9013d0@5b0d8236,
 //   event = cats.effect.tracing.TracingEvent$StackTrace
 // )
 ```

@@ -8,6 +8,8 @@ It is comprised of the following modules:
 - *core* provides some core structures for supporting the tus
   protocol
 - *fs* provides a backend for storing files on the local file system
+- *pg* provides a backend for storing files in a PostgreSQL database
+  using the large object feature
 - *http4s* depends on `http4s-dsl` to implement the tus protocol as
   server `HttpRoutes` value that you can mount in your endpoint
   hierarchy
