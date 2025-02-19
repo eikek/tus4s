@@ -14,7 +14,8 @@ import tus4s.http4s.Headers
 import tus4s.http4s.headers.*
 
 private[server] trait Tus4sDsl[F[_]] extends Http4sDsl[F]:
-  val checksumMismatch: Status = Headers.checksumMismatch
+  val checksumMismatch: Response[F] =
+    Response(Headers.checksumMismatch).withEntity("Checksum mismatch")
 
   given Uri.Path.SegmentEncoder[UploadId] =
     Uri.Path.SegmentEncoder.instance(a => Uri.Path.Segment(a.value))

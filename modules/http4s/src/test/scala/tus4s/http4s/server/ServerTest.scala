@@ -15,6 +15,10 @@ import tus4s.fs.FsTusProtocol
 import tus4s.pg.ConnectionResource
 import tus4s.pg.PgConfig
 import tus4s.pg.PgTusProtocol
+import org.http4s.Response
+import org.http4s.Status
+import org.http4s.DecodeFailure
+import org.http4s.HttpVersion
 
 object ServerTest extends IOApp:
   val pgBackend = PgTusProtocol.create[IO](
@@ -24,7 +28,7 @@ object ServerTest extends IOApp:
     )
   )
   val fsBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
-  val tusBackend = pgBackend
+  val tusBackend = fsBackend
 
   def tusEndpoint(backend: TusProtocol[IO]) =
     TusEndpointBuilder[IO](backend)
@@ -57,6 +61,14 @@ object ServerTest extends IOApp:
         .withHost(host"0.0.0.0")
         .withPort(port"8888")
         .withHttpApp(app)
+        .withErrorHandler {
+          case ex: DecodeFailure =>
+            IO.println(s"Error decoding message! $ex")
+              .as(ex.toHttpResponse(HttpVersion.`HTTP/1.1`))
+          case ex =>
+            IO.println(s"Service raised an error! $ex")
+              .as(Response(status = Status.InternalServerError))
+        }
         .build
         .useForever
     yield ExitCode.Success

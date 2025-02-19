@@ -106,10 +106,12 @@ object TusCodec:
       cfg: TusConfig,
       uc: Option[UploadChecksum]
   ): Either[DecodeFailure, Option[UploadChecksum]] =
-    uc match
-      case Some(cs) if !Extension.includesAlgorithm(cfg.extensions, cs.algorithm) =>
-        Left(TusDecodeFailure.UnsupportedChecksumAlgorithm(cs.algorithm))
-      case _ => Right(uc)
+    if (Extension.findChecksum(cfg.extensions).isEmpty) Right(None)
+    else
+      uc match
+        case Some(cs) if !Extension.includesAlgorithm(cfg.extensions, cs.algorithm) =>
+          Left(TusDecodeFailure.UnsupportedChecksumAlgorithm(cs.algorithm))
+        case _ => Right(uc)
 
   private def validateUploadConcat(
       cfg: TusConfig,

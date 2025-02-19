@@ -55,8 +55,7 @@ final class TusEndpoint[F[_]: Sync](
     tus
       .create(req)
       .flatMap:
-        case CreationResult.ChecksumMismatch =>
-          Response(checksumMismatch).pure[F]
+        case CreationResult.ChecksumMismatch => checksumMismatch.pure[F]
         case CreationResult.UploadTooLarge(maxSize, current) =>
           TusDecodeFailure.MaxSizeExceeded(maxSize, current).toHttpResponse(hv).pure[F]
         case CreationResult.Success(id, offset, expires) =>
@@ -114,7 +113,7 @@ final class TusEndpoint[F[_]: Sync](
           case ReceiveResult.UploadDone =>
             Conflict(s"Upload is already done")
           case ReceiveResult.ChecksumMismatch =>
-            Response(checksumMismatch).pure[F]
+            checksumMismatch.pure[F]
           case ReceiveResult.UploadTooLarge(max, current) =>
             TusDecodeFailure
               .MaxSizeExceeded(max, current)
