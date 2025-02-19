@@ -4,6 +4,10 @@ import cats.effect.*
 import fs2.io.file.Path
 
 import com.comcast.ip4s.*
+import org.http4s.DecodeFailure
+import org.http4s.HttpVersion
+import org.http4s.Response
+import org.http4s.Status
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.Router
@@ -15,10 +19,6 @@ import tus4s.fs.FsTusProtocol
 import tus4s.pg.ConnectionResource
 import tus4s.pg.PgConfig
 import tus4s.pg.PgTusProtocol
-import org.http4s.Response
-import org.http4s.Status
-import org.http4s.DecodeFailure
-import org.http4s.HttpVersion
 
 object ServerTest extends IOApp:
   val pgBackend = PgTusProtocol.create[IO](

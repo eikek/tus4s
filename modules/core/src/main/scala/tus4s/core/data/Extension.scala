@@ -41,6 +41,9 @@ object Extension:
     Concatenation
   )
 
+  def createSet(values: (Extension, Boolean)*): Set[Extension] =
+    values.filter(_._2).map(_._1).toSet
+
   @annotation.tailrec
   def findCreation(exts: Set[Extension]): Option[Creation] =
     if (exts.isEmpty) None

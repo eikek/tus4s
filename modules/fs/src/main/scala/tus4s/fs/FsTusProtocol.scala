@@ -19,12 +19,13 @@ final class FsTusProtocol[F[_]: Sync: Files](
     enableChecksum: Boolean = true
 ) extends TusProtocol[F]:
   val config: TusConfig = TusConfig(
-    extensions = Set(Extension.Creation(CreationOptions.all)),
+    extensions = Extension.createSet(
+      Extension.Creation(CreationOptions.all) -> true,
+      Extension.Termination -> enableTermination,
+      Extension.Checksum(ChecksumAlgorithm.all) -> enableChecksum,
+      Extension.Concatenation -> enableConcatenation
+    ),
     maxSize = maxSize
-  ).addExtensions(
-    enableTermination -> Extension.Termination,
-    enableChecksum -> Extension.Checksum(ChecksumAlgorithm.all),
-    enableConcatenation -> Extension.Concatenation
   )
 
   def findFile(id: UploadId): F[Option[(UploadState, Path)]] =

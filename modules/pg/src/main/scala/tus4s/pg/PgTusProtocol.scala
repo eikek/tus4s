@@ -21,10 +21,11 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
 
   /** Configuration supported by this protocol implementation. */
   def config: TusConfig = TusConfig(
-    extensions = Set(
-      Extension.Creation(CreationOptions.all),
-      Extension.Termination
-    ) ++ Option.when(cfg.enableConcat)(Extension.Concatenation).toSet,
+    extensions = Extension.createSet(
+      Extension.Creation(CreationOptions.all) -> true,
+      Extension.Termination -> true,
+      Extension.Concatenation -> cfg.enableConcat
+    ),
     maxSize = cfg.maxSize
   )
 
