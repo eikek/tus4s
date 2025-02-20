@@ -9,7 +9,6 @@ import org.http4s.headers.*
 import org.typelevel.ci.*
 import tus4s.core.TusProtocol
 import tus4s.core.data.ByteSize
-import tus4s.core.data.MetadataMap.Key
 import tus4s.core.data.UploadId
 import tus4s.http4s.headers.UploadLength
 import tus4s.http4s.headers.UploadMetadata
