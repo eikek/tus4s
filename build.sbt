@@ -126,6 +126,7 @@ val http4s = project
         Dependencies.http4sDsl,
     libraryDependencies ++= (Dependencies.http4sEmber ++
       Dependencies.http4sClient ++
+      Dependencies.tusJava ++
       Dependencies.scribe).map(_ % Test),
     reStart / fullClasspath := (Test / fullClasspath).value,
     reStart / mainClass := Some("tus4s.http4s.server.ServerTest")

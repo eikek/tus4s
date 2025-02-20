@@ -16,7 +16,12 @@ object Dependencies {
     val catsParse = "1.1.0"
     val postgres = "42.7.5"
     val ulid = "2025.1.6"
+    val tusJava = "0.5.0"
   }
+
+  val tusJava = Seq(
+    "io.tus.java.client" % "tus-java-client" % V.tusJava
+  )
 
   val postgres = Seq(
     "org.postgresql" % "postgresql" % V.postgres
