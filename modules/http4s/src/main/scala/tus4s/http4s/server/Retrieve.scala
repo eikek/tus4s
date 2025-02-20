@@ -42,8 +42,7 @@ object Retrieve:
               file.getContentType
                 .flatMap(ct => MediaType.parse(ct).toOption)
                 .map(`Content-Type`(_)),
-              file.state.meta
-                .getString(Key.fileName)
+              file.getFileName
                 .map(n => `Content-Disposition`("inline", Map(ci"filename" -> n)))
             )
           )
