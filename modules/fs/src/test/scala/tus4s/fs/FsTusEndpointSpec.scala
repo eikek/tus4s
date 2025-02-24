@@ -1,10 +1,10 @@
-package tus4s.http4s.server
+package tus4s.fs
 
 import cats.effect.*
 import fs2.io.file.{Files, Path}
 
 import tus4s.core.data.ByteSize
-import tus4s.fs.FsTusProtocol
+import tus4s.http4s.server.*
 
 class FsTusEndpointSpec
     extends TusEndpointSuite(

@@ -1,12 +1,10 @@
-package tus4s.http4s.server
+package tus4s.pg
 
 import cats.effect.*
 
 import tus4s.core.TusProtocol
 import tus4s.core.data.ByteSize
-import tus4s.pg.DbTestBase
-import tus4s.pg.PgConfig
-import tus4s.pg.PgTusProtocol
+import tus4s.http4s.server.*
 
 class PgTusEndpointSpec
     extends TusEndpointSuite(

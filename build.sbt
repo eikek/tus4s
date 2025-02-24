@@ -89,30 +89,6 @@ val core = project
     libraryDependencies ++= Dependencies.fs2Core ++ Dependencies.catsParse ++ Dependencies.ulid
   )
 
-val fs = project
-  .in(file("modules/fs"))
-  .settings(sharedSettings)
-  .settings(testSettings)
-  .settings(scalafixSettings)
-  .settings(
-    name := "tus4s-fs",
-    description := "Provides a backend for storing files in the local file system",
-    libraryDependencies ++= Dependencies.fs2Io ++ Dependencies.catsEffect
-  )
-  .dependsOn(core % "compile->compile;test->test")
-
-val pg = project
-  .in(file("modules/pg"))
-  .settings(sharedSettings)
-  .settings(testSettings)
-  .settings(scalafixSettings)
-  .settings(
-    name := "tus4s-pg",
-    description := "Provides a backend for storing files in postgres",
-    libraryDependencies ++= Dependencies.catsEffect ++ Dependencies.postgres
-  )
-  .dependsOn(core % "compile->compile;test->test")
-
 val http4s = project
   .in(file("modules/http4s"))
   .settings(sharedSettings)
@@ -126,12 +102,35 @@ val http4s = project
         Dependencies.http4sDsl,
     libraryDependencies ++= (Dependencies.http4sEmber ++
       Dependencies.http4sClient ++
-      Dependencies.tusJava ++
       Dependencies.scribe).map(_ % Test),
     reStart / fullClasspath := (Test / fullClasspath).value,
     reStart / mainClass := Some("tus4s.http4s.server.ServerTest")
   )
-  .dependsOn(core, fs % "test->test", pg % "test->test")
+  .dependsOn(core)
+
+val fs = project
+  .in(file("modules/fs"))
+  .settings(sharedSettings)
+  .settings(testSettings)
+  .settings(scalafixSettings)
+  .settings(
+    name := "tus4s-fs",
+    description := "Provides a backend for storing files in the local file system",
+    libraryDependencies ++= Dependencies.fs2Io ++ Dependencies.catsEffect
+  )
+  .dependsOn(core % "compile->compile;test->test", http4s % "test->test")
+
+val pg = project
+  .in(file("modules/pg"))
+  .settings(sharedSettings)
+  .settings(testSettings)
+  .settings(scalafixSettings)
+  .settings(
+    name := "tus4s-pg",
+    description := "Provides a backend for storing files in postgres",
+    libraryDependencies ++= Dependencies.catsEffect ++ Dependencies.postgres
+  )
+  .dependsOn(core % "compile->compile;test->test", http4s % "test->test")
 
 val updateReadme = inputKey[Unit]("Update readme")
 lazy val readme = project

@@ -1,7 +1,6 @@
 package tus4s.http4s.server
 
 import cats.effect.*
-import fs2.io.file.Path
 
 import com.comcast.ip4s.*
 import org.http4s.DecodeFailure
@@ -14,21 +13,18 @@ import org.http4s.server.Router
 import org.http4s.server.middleware.ErrorHandling
 import org.http4s.server.middleware.Logger
 import tus4s.core.TusProtocol
-import tus4s.core.data.ByteSize
-import tus4s.fs.FsTusProtocol
-import tus4s.pg.ConnectionResource
-import tus4s.pg.PgConfig
-import tus4s.pg.PgTusProtocol
 
-object ServerTest extends IOApp:
-  val pgBackend = PgTusProtocol.create[IO](
-    PgConfig(
-      ConnectionResource.simple("jdbc:postgresql://localhost:5432/tus_test"),
-      "tus_files"
-    )
-  )
-  val fsBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
-  val tusBackend = fsBackend
+abstract class ServerTest extends IOApp:
+  scribe.Logger.root.withMinimumLevel(scribe.Level.Debug).replace()
+
+  // val pgBackend = PgTusProtocol.create[IO](
+  //   PgConfig(
+  //     ConnectionResource.simple("jdbc:postgresql://localhost:5432/tus_test"),
+  //     "tus_files"
+  //   )
+  // )
+  // val fsBackend = FsTusProtocol.create[IO](Path("/tmp/tus-test"), Some(ByteSize.mb(500)))
+  def tusBackend: IO[TusProtocol[IO]]
 
   def tusEndpoint(backend: TusProtocol[IO]) =
     TusEndpointBuilder[IO](backend)
@@ -46,8 +42,6 @@ object ServerTest extends IOApp:
         ).orNotFound
       )
     )
-
-  scribe.Logger.root.withMinimumLevel(scribe.Level.Debug).replace()
 
   def run(args: List[String]): IO[ExitCode] =
     for
