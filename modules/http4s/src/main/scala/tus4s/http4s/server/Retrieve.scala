@@ -8,6 +8,7 @@ import org.http4s.*
 import org.http4s.headers.*
 import org.typelevel.ci.*
 import tus4s.core.TusProtocol
+import tus4s.core.data.ByteRange
 import tus4s.core.data.ByteSize
 import tus4s.core.data.UploadId
 import tus4s.http4s.headers.UploadLength
@@ -30,7 +31,7 @@ object Retrieve:
   def simpleGet[F[_]: Monad]: Retrieve[F] =
     apply { (tus, req, id) =>
       (for
-        file <- OptionT(tus.find(id)).filter(_.state.isDone)
+        file <- OptionT(tus.find(id, ByteRange.all)).filter(_.state.isDone)
         resp <- OptionT.pure(
           Response(
             body = file.data,

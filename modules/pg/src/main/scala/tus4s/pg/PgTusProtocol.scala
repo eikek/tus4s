@@ -26,11 +26,12 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
       Extension.Termination -> true,
       Extension.Concatenation -> cfg.enableConcat
     ),
-    maxSize = cfg.maxSize
+    maxSize = cfg.maxSize,
+    rangeRequests = !cfg.enableConcat
   )
 
-  def find(id: UploadId): F[Option[FileResult[F]]] =
-    cfg.db.use(tasks.find(id, cfg.chunkSize, cfg.db, cfg.enableConcat).run)
+  def find(id: UploadId, range: ByteRange): F[Option[FileResult[F]]] =
+    cfg.db.use(tasks.find(id, range, cfg.chunkSize, cfg.db, cfg.enableConcat).run)
 
   def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] =
     cfg.db.use(tasks.receiveChunk(id, chunk, cfg.chunkSize, cfg.maxSize).run)

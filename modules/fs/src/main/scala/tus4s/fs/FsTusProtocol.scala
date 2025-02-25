@@ -25,7 +25,8 @@ final class FsTusProtocol[F[_]: Sync: Files](
       Extension.Checksum(ChecksumAlgorithm.all) -> enableChecksum,
       Extension.Concatenation -> enableConcatenation
     ),
-    maxSize = maxSize
+    maxSize = maxSize,
+    rangeRequests = true
   )
 
   def findFile(id: UploadId): F[Option[(UploadState, Path)]] =
@@ -33,10 +34,20 @@ final class FsTusProtocol[F[_]: Sync: Files](
       .semiflatMap(e => e.readState[F].map(state => (state, e.dataFile)))
       .value
 
-  def find(id: UploadId): F[Option[FileResult[F]]] =
+  def find(id: UploadId, range: ByteRange): F[Option[FileResult[F]]] =
     OptionT(findFile(id)).semiflatMap { case (state, file) =>
       val hasContent = state.length.exists(_ > ByteSize.zero)
-      FileResult(state, Files[F].readAll(file), hasContent, None, None).pure[F]
+      val data = range.fold(
+        Files[F].readAll(file),
+        chunk =>
+          Files[F].readRange(
+            file,
+            64 * 1024,
+            chunk.offset.toBytes,
+            (chunk.offset + chunk.length).toBytes
+          )
+      )
+      FileResult(state, data, hasContent, None, None).pure[F]
     }.value
 
   def receive(id: UploadId, chunk: UploadRequest[F]): F[ReceiveResult] =

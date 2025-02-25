@@ -149,7 +149,7 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       id: UploadId,
       chunkSize: ByteSize,
       makeConn: ConnectionResource[F],
-      range: ByteRange = ByteRange.All
+      range: ByteRange
   ): DbTask[F, Option[FileResult[F]]] =
     (for
       (state, oidOpt) <- fileTable.find(id).mapF(OptionT.apply)
@@ -165,11 +165,12 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
 
   def find(
       id: UploadId,
+      range: ByteRange,
       chunkSize: ByteSize,
       makeConn: ConnectionResource[F],
       enableConcat: Boolean
   ) =
-    findFile(id, chunkSize, makeConn)
+    findFile(id, chunkSize, makeConn, range)
       .flatMap {
         case r @ Some(_) => DbTask.pure(r)
         case None =>

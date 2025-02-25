@@ -6,6 +6,7 @@ import cats.syntax.all.*
 
 import munit.*
 import scodec.bits.*
+import tus4s.core.data.ByteRange
 import tus4s.core.data.ByteSize
 import tus4s.core.data.ConcatRequest
 import tus4s.core.data.ConcatResult
@@ -21,6 +22,7 @@ import tus4s.core.data.Url
 abstract class TusProtocolTestBase extends CatsEffectSuite:
 
   def tusProtocol(maxSize: Option[ByteSize]): Resource[IO, TusProtocol[IO]]
+  private lazy val tusCfg = tusProtocol(None).use(_.config.pure[IO]).unsafeRunSync()
 
   def b(str: String): ByteVector = ByteVector.view(str.getBytes())
 
@@ -36,6 +38,20 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
 
         tp.findFileWithContent(id)
           .map(f => assertEquals(f.getFileName, Some("test.txt")))
+      }
+    }
+
+  test("load chunk"):
+    assume(tusCfg.rangeRequests, "RangeRequests not enabled")
+    tusProtocol(None).use { tp =>
+      val data = b("hello world")
+      val req = UploadRequest.fromByteVector[IO](data)
+      tp.createSuccess(req).flatMap { case CreationResult.Success(id, _, _) =>
+        tp.findFileWithContent(id, ByteRange(ByteSize.bytes(2), ByteSize.bytes(5)))
+          .flatMap { r =>
+            val cnt = r.data.through(fs2.text.utf8.decode).compile.string
+            cnt.assertEquals("llo w")
+          }
       }
     }
 
@@ -179,7 +195,7 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
           case ConcatResult.PartsNotFound(ids) =>
             fail(s"Missing parts for concat: $ids")
 
-        fileResult <- tp.find(id).map(_.get)
+        fileResult <- tp.find(id, ByteRange.all).map(_.get)
         content <- fileResult.data
           .through(fs2.text.utf8.decode)
           .compile
@@ -209,7 +225,7 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
           case _                                => fail(s"Unexpected result: $result")
 
         _ <- tus.delete(id)
-        _ <- tus.find(id).assertEquals(None)
+        _ <- tus.find(id, ByteRange.all).assertEquals(None)
       yield ()
     }
 
@@ -223,8 +239,11 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
         case r                                => fail(s"Unexpected creation result: $r")
       }
 
-    def findFileWithContent(id: UploadId): IO[FileResult[IO]] =
-      self.find(id).map { file =>
+    def findFileWithContent(
+        id: UploadId,
+        range: ByteRange = ByteRange.all
+    ): IO[FileResult[IO]] =
+      self.find(id, range).map { file =>
         assert(file.isDefined)
         val f = file.get
         assert(f.hasContent)
@@ -232,7 +251,7 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
       }
 
     def findFileWithoutContent(id: UploadId): IO[FileResult[IO]] =
-      self.find(id).map { file =>
+      self.find(id, ByteRange.all).map { file =>
         assert(file.isDefined)
         val f = file.get
         assert(!f.hasContent)

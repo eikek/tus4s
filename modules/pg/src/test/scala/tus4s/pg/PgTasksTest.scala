@@ -23,7 +23,12 @@ class PgTasksTest extends DbTestBase:
       for
         _ <- table.create
         dbc <- sameConnection
-        r <- tasks.findFile(UploadId.unsafeFromString("one"), chunkSize, dbc)
+        r <- tasks.findFile(
+          UploadId.unsafeFromString("one"),
+          chunkSize,
+          dbc,
+          ByteRange.all
+        )
         _ = assert(r.isEmpty)
       yield ()
     }
@@ -36,7 +41,7 @@ class PgTasksTest extends DbTestBase:
         s1 = UploadState(id = id, meta = MetadataMap.empty.withFilename("test.txt"))
         _ <- table.insert(s1)
         dbc <- sameConnection
-        r <- tasks.findFile(id, chunkSize, dbc)
+        r <- tasks.findFile(id, chunkSize, dbc, ByteRange.all)
         _ = assert(r.isDefined)
         fr = r.get
         _ = assertEquals(fr.state.id, id)
@@ -61,7 +66,7 @@ class PgTasksTest extends DbTestBase:
           case _ =>
             fail(s"Unexpected result: $result")
 
-        frOpt <- tasks.findFile(id, chunkSize * 4, dbc)
+        frOpt <- tasks.findFile(id, chunkSize * 4, dbc, ByteRange.all)
         _ = assert(frOpt.isDefined)
         fr = frOpt.get
         _ = assert(!fr.hasContent)
@@ -84,7 +89,7 @@ class PgTasksTest extends DbTestBase:
           case _ =>
             fail(s"Unexpected result: $result")
         dbc <- sameConnection
-        frOpt <- tasks.findFile(id, chunkSize * 4, dbc)
+        frOpt <- tasks.findFile(id, chunkSize * 4, dbc, ByteRange.all)
         _ = assert(frOpt.isDefined)
         fr = frOpt.get
         _ = assert(fr.hasContent)
@@ -118,7 +123,7 @@ class PgTasksTest extends DbTestBase:
           case _ =>
             fail(s"Unexpected result: $result")
         dbc <- sameConnection
-        frOpt <- tasks.findFile(id, chunkSize * 4, dbc)
+        frOpt <- tasks.findFile(id, chunkSize * 4, dbc, ByteRange.all)
         _ = assert(frOpt.isDefined)
         fr = frOpt.get
         _ = assert(fr.hasContent)
@@ -139,7 +144,7 @@ class PgTasksTest extends DbTestBase:
     yield id
 
     def findFile(id: UploadId) =
-      tasks.findFile(id, chunkSize * 4, makeConnectionResource(dbName))
+      tasks.findFile(id, chunkSize * 4, makeConnectionResource(dbName), ByteRange.all)
 
     for
       (_, drop) <- withDb(dbName).allocated

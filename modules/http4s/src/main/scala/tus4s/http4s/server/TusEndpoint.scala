@@ -83,7 +83,7 @@ final class TusEndpoint[F[_]: Sync](
 
   private def head(id: UploadId): F[Response[F]] =
     tus
-      .find(id)
+      .find(id, ByteRange.all)
       .flatMap:
         case Some(upload) =>
           NoContent
