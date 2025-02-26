@@ -55,6 +55,54 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
       }
     }
 
+  test("load chunk over concatenated files"):
+    assume(
+      tusCfg.rangeRequests && tusCfg.extensions.contains(Extension.Concatenation),
+      "RangeRequests and Concatenation extension not enabled"
+    )
+    tusProtocol(None).use { tp =>
+      val data1 = b("hello ")
+      val data2 = b("world")
+      val req1 = UploadRequest.fromByteVector[IO](data1).withPartial(true)
+      val req2 = UploadRequest.fromByteVector[IO](data2).withPartial(true)
+
+      for
+        cr1 <- tp.create(req1)
+        cr2 <- tp.create(req2)
+        id1 = cr1 match
+          case CreationResult.Success(id, _, _) => id
+          case _                                => fail("")
+        id2 = cr2 match
+          case CreationResult.Success(id, _, _) => id
+          case _                                => fail("")
+
+        ccr = ConcatRequest(
+          NonEmptyList.of(id1, id2),
+          NonEmptyList.of(Url(s"/files/${id1}"), Url(s"/files/${id2}"))
+        )
+        res <- tp.concat(ccr)
+        id = res match
+          case ConcatResult.Success(id) =>
+            assertNotEquals(id, id1)
+            assertNotEquals(id, id2)
+            id
+
+          case ConcatResult.PartsNotFound(ids) =>
+            fail(s"Missing parts for concat: $ids")
+
+        fileResult <- tp
+          .find(id, ByteRange(ByteSize.bytes(8), ByteSize.bytes(2)))
+          .map(_.get)
+        content <- fileResult.data
+          .through(fs2.text.utf8.decode)
+          .compile
+          .string
+        _ = assertEquals(content, "rl")
+        _ = assert(fileResult.state.isDone)
+        _ = assert(fileResult.state.isFinal)
+      yield ()
+    }
+
   test("create: empty upload"):
     tusProtocol(None).use { tp =>
       val req = UploadRequest.fromByteVector[IO](ByteVector.empty)

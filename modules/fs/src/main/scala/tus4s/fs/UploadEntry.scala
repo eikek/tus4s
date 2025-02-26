@@ -6,11 +6,10 @@ import cats.data.OptionT
 import cats.effect.{Resource, Sync}
 import cats.syntax.all.*
 import fs2.Stream
-import fs2.hashing.HashAlgorithm
 import fs2.io.file.{Files, Path}
 import fs2.io.file.{Flag, Flags}
 
-import scodec.bits.ByteVector
+import tus4s.core.HashSupport
 import tus4s.core.data.*
 
 final private case class UploadEntry(
@@ -32,31 +31,23 @@ final private case class UploadEntry(
             .compile
             .lastOrError
 
-  def writeChunk[F[_]: Files: Sync](data: Stream[F, Byte]): Resource[F, TempChunk] =
+  def writeChunk[F[_]: Files: Sync](
+      algo: Option[ChecksumAlgorithm],
+      data: Stream[F, Byte]
+  ): Resource[F, TempChunk] =
     val create = UploadId.randomULID[F].flatMap { id =>
       val file = dir / id.value
-      data.through(Files[F].writeAll(file)).compile.drain >> Files[F]
-        .size(file)
-        .map(n => TempChunk(id.value, ByteSize.bytes(n)))
+      HashSupport
+        .hasher[F](algo)
+        .use { hasher =>
+          val writer = hasher.observe(Files[F].writeAll(file))
+          data.through(writer).compile.lastOrError
+        }
+        .flatMap(hash =>
+          Files[F].size(file).map(n => TempChunk(id.value, ByteSize.bytes(n), hash))
+        )
     }
     Resource.make(create)(tc => Files[F].deleteIfExists(dir / tc.id).void)
-
-  def createChecksum[F[_]: Files: Sync](
-      temp: TempChunk,
-      algo: ChecksumAlgorithm
-  ): F[ByteVector] =
-    val file = dir / temp.id
-    val digest = algo match
-      case ChecksumAlgorithm.Sha1   => HashAlgorithm.SHA1
-      case ChecksumAlgorithm.Sha256 => HashAlgorithm.SHA256
-      case ChecksumAlgorithm.Sha512 => HashAlgorithm.SHA512
-      case ChecksumAlgorithm.Md5    => HashAlgorithm.MD5
-    Files[F]
-      .readAll(file)
-      .through(fs2.hashing.Hashing.forSync[F].hash(digest))
-      .compile
-      .lastOrError
-      .map(_.bytes.toByteVector)
 
   def append[F[_]: Files: Sync](temp: TempChunk, state: UploadState): F[Unit] =
     val src = dir / temp.id

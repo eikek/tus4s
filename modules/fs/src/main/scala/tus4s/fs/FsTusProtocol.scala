@@ -66,7 +66,7 @@ final class FsTusProtocol[F[_]: Sync: Files](
       chunk: UploadRequest[F]
   ): F[ReceiveResult] =
     Validation.validateReceive(state, chunk, maxSize).map(_.pure[F]).getOrElse {
-      e.writeChunk(chunk.dataLimit(maxSize)).use { temp =>
+      e.writeChunk(chunk.checksum.map(_.algorithm), chunk.dataLimit(maxSize)).use { temp =>
         Validation
           .validateReceive(state, chunk.copy(contentLength = temp.length.some), maxSize)
           .map(_.pure[F])
@@ -75,15 +75,11 @@ final class FsTusProtocol[F[_]: Sync: Files](
               offset = temp.length + state.offset,
               length = state.length.orElse(chunk.uploadLength)
             )
-            val checksumMismatch =
-              OptionT
-                .fromOption[F](chunk.checksum)
-                .semiflatMap(uc =>
-                  e.createChecksum(temp, uc.algorithm).map(_ == uc.checksum)
-                )
-                .subflatMap(ok => Option.when(!ok)(ReceiveResult.ChecksumMismatch))
+            val checksumMismatch = chunk.checksum
+              .filter(_.hash != temp.hash)
+              .map(_ => ReceiveResult.ChecksumMismatch.pure[F])
 
-            checksumMismatch.getOrElseF:
+            checksumMismatch.getOrElse:
               (e.append(temp, newState) >> e.writeState(newState))
                 .as(ReceiveResult.Success(newState.offset, None))
           }
@@ -101,25 +97,22 @@ final class FsTusProtocol[F[_]: Sync: Files](
         makeNewEntry.flatMap { e =>
           val stateNoContent = req.toStateNoContent(e.id)
           if (req.hasContent)
-            e.writeChunk(req.dataLimit(maxSize)).use { temp =>
-              Validation.validateCreate(
-                req.copy(contentLength = temp.length.some),
-                maxSize
-              ) match
-                case Some(r) => r.pure[F]
-                case None =>
-                  val state = stateNoContent.copy(offset = temp.length)
-                  val checksumMismatch =
-                    OptionT
-                      .fromOption[F](req.checksum)
-                      .semiflatMap(uc =>
-                        e.createChecksum(temp, uc.algorithm).map(_ == uc.checksum)
-                      )
-                      .subflatMap(ok => Option.when(!ok)(CreationResult.ChecksumMismatch))
+            e.writeChunk(req.checksum.map(_.algorithm), req.dataLimit(maxSize)).use {
+              temp =>
+                Validation.validateCreate(
+                  req.copy(contentLength = temp.length.some),
+                  maxSize
+                ) match
+                  case Some(r) => r.pure[F]
+                  case None =>
+                    val state = stateNoContent.copy(offset = temp.length)
+                    val checksumMismatch = req.checksum
+                      .filter(_.hash != temp.hash)
+                      .map(_ => CreationResult.ChecksumMismatch.pure[F])
 
-                  checksumMismatch.getOrElseF:
-                    (e.append(temp, state) >> e.writeState(state))
-                      .as(CreationResult.Success(e.id, state.offset, None))
+                    checksumMismatch.getOrElse:
+                      (e.append(temp, state) >> e.writeState(state))
+                        .as(CreationResult.Success(e.id, state.offset, None))
             }
           else
             e.writeState(stateNoContent)

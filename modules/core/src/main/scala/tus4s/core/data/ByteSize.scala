@@ -27,9 +27,11 @@ object ByteSize:
     def toKb: Double = self.toDouble / 1024d
     def toMb: Double = toKb / 1024
     def +(other: ByteSize): ByteSize = self + other
+    def -(other: ByteSize): ByteSize = self - other
     def *(fac: Double): ByteSize = (self * fac).toLong
     def <=(other: ByteSize): Boolean = self <= other
     def >=(other: ByteSize): Boolean = self >= other
+    def abs: ByteSize = math.abs(self)
 
   given Show[ByteSize] = Show.show { n =>
     n.toMb match

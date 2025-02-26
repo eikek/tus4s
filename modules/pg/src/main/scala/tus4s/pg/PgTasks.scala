@@ -164,18 +164,27 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       _ <- fileTable.updateOffset(id, nextOffset).resource
     yield nextOffset).evaluated
 
-  def findConcatFile(id: UploadId, chunkSize: ByteSize, makeConn: ConnectionResource[F]) =
+  def findConcatFile(
+      id: UploadId,
+      chunkSize: ByteSize,
+      range: ByteRange,
+      makeConn: ConnectionResource[F]
+  ) =
     (for
-      (state, oids) <- fileTable.findConcat(id).mapF(OptionT.apply)
+      (concatFile, r) <- fileTable
+        .findConcat(id)
+        .mapF(OptionT.apply)
+        .mapF(_.subflatMap(_.applyRange(range)))
       data = Stream
         .resource(makeConn)
         .flatMap(conn =>
           Stream
-            .emits(oids.toVector)
+            .emits(concatFile.oids.toVector)
             .covary[F]
-            .flatMap(oid => loadFile(oid, ByteRange.All, chunkSize).run(conn))
+            // TODO doesn't work! must calc ranges for all files! have to cut the length on each, obviously
+            .flatMap(oid => loadFile(oid, r, chunkSize).run(conn))
         )
-      res = FileResult(state, data, true, None, None)
+      res = FileResult(concatFile.state, data, true, None, None)
     yield res).mapF(_.value)
 
   def findFile(
@@ -207,7 +216,7 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       .flatMap {
         case r @ Some(_) => DbTask.pure(r)
         case None =>
-          if (enableConcat) findConcatFile(id, chunkSize, makeConn)
+          if (enableConcat) findConcatFile(id, chunkSize, range, makeConn)
           else DbTask.pure(None)
       }
 

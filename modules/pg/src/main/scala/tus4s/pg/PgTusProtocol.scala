@@ -28,7 +28,7 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
       Extension.Checksum(ChecksumAlgorithm.all) -> true
     ),
     maxSize = cfg.maxSize,
-    rangeRequests = !cfg.enableConcat
+    rangeRequests = true
   )
 
   def find(id: UploadId, range: ByteRange): F[Option[FileResult[F]]] =

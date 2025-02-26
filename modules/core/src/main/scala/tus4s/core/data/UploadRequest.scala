@@ -48,7 +48,7 @@ final case class UploadRequest[F[_]](
 object UploadRequest:
   final case class Checksum(algorithm: ChecksumAlgorithm, checksum: ByteVector):
     def asString: String = s"${algorithm.name}:${checksum.toHex}"
-    def hash: Hash = Hash(Chunk.byteVector(checksum))
+    val hash: Hash = Hash(Chunk.byteVector(checksum))
 
   object Checksum:
     def fromString(s: String): Either[String, Checksum] =

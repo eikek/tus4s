@@ -13,8 +13,8 @@ import tus4s.core.data.ConcatType
 import tus4s.core.data.MetadataMap
 import tus4s.core.data.Url
 import tus4s.core.data.{UploadId, UploadState}
-import tus4s.pg.impl.DbTask
 import tus4s.pg.impl.syntax.*
+import tus4s.pg.impl.{ConcatFile, DbTask}
 
 private[pg] class PgTusTable[F[_]: Sync](table: String):
   private val concatTable: String = s"${table}_concat"
@@ -107,7 +107,7 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
       (UploadState(id, offset, len, meta, concatType), rs.longColumn("file_oid"))
     }
 
-  def findConcat(id: UploadId): DbTask[F, Option[(UploadState, NonEmptyVector[Long])]] =
+  def findConcat(id: UploadId): DbTask[F, Option[ConcatFile]] =
     val sql1 =
       s"""SELECT
          | f.meta_data,
@@ -117,7 +117,7 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
          | WHERE f.id = ?
     """.stripMargin
 
-    val sql2 = s"""SELECT e.file_oid as file_oid
+    val sql2 = s"""SELECT e.file_oid as file_oid, e.file_length as file_length
                   | FROM "$table" e
                   | INNER JOIN "$concatFilesTable" p ON p.part_id = e.id
                   | INNER JOIN "$concatTable" f ON f.id = p.file_id
@@ -142,7 +142,10 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
         }
 
     val parts = DbTask.prepare(sql2).queryWith(_.setString(1, id.value)).readMany { rs =>
-      rs.longColumnRequire("file_oid")
+      (
+        rs.longColumnRequire("file_oid"),
+        ByteSize.bytes(rs.longColumnRequire("file_length"))
+      )
     }
     (for
       (len, meta, uris) <- envelope.mapF(OptionT.apply)
@@ -155,7 +158,7 @@ private[pg] class PgTusTable[F[_]: Sync](table: String):
         meta,
         ConcatType.Final(uris).some
       )
-    yield (state, oidsNel)).mapF(_.value)
+    yield ConcatFile(state, oidsNel)).mapF(_.value)
 
   def updateOffset(id: UploadId, offset: ByteSize) =
     val sql = s"""UPDATE "$table" SET file_offset = ? WHERE id = ?"""
