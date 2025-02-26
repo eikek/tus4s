@@ -4,6 +4,7 @@ import cats.data.NonEmptyList
 import cats.syntax.all.*
 import fs2.Chunk
 import fs2.Stream
+import fs2.hashing.Hash
 
 import scodec.bits.ByteVector
 
@@ -47,6 +48,7 @@ final case class UploadRequest[F[_]](
 object UploadRequest:
   final case class Checksum(algorithm: ChecksumAlgorithm, checksum: ByteVector):
     def asString: String = s"${algorithm.name}:${checksum.toHex}"
+    def hash: Hash = Hash(Chunk.byteVector(checksum))
 
   object Checksum:
     def fromString(s: String): Either[String, Checksum] =

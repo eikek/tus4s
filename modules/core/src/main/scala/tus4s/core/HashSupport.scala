@@ -1,10 +1,11 @@
 package tus4s.core
 
-import tus4s.core.data.ChecksumAlgorithm
-import cats.effect.*
-import fs2.hashing.{Hash as FHash, HashAlgorithm, Hasher, Hashing}
-import fs2.Chunk
 import cats.Applicative
+import cats.effect.*
+import fs2.Chunk
+import fs2.hashing.{Hash as FHash, *}
+
+import tus4s.core.data.ChecksumAlgorithm
 
 object HashSupport:
 

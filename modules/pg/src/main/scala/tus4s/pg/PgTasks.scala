@@ -6,15 +6,15 @@ import cats.effect.*
 import cats.syntax.all.*
 import fs2.Chunk
 import fs2.Stream
+import fs2.hashing.Hash
 
 import org.postgresql.largeobject.LargeObject
 import org.postgresql.largeobject.LargeObjectManager
+import tus4s.core.HashSupport
 import tus4s.core.data.*
 import tus4s.core.internal.Validation
-import tus4s.core.HashSupport
 import tus4s.pg.impl.syntax.*
 import tus4s.pg.impl.{DbTask, DbTaskS}
-import fs2.hashing.Hash
 
 private[pg] class PgTasks[F[_]: Sync](table: String):
 
@@ -32,7 +32,7 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
           id <- DbTask.liftF(UploadId.randomULID[F])
           _ <- fileTable.insert(req.toStateNoContent(id)).inTx
 
-          saved <-
+          (saved, hash) <-
             if (req.hasContent)
               insertFile(
                 id,
@@ -40,10 +40,16 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
                 maxSize,
                 req.checksum.map(_.algorithm)
               )
-            else DbTask.pure(ByteSize.zero)
+            else DbTask.pure(ByteSize.zero -> Hash(Chunk.empty))
 
-          res = Validation
-            .validateCreate(req.copy(uploadLength = saved.some), maxSize)
+          res = req.checksum
+            .map(_.hash)
+            .filter(_ != hash)
+            .map(_ => CreationResult.ChecksumMismatch)
+            .orElse(
+              Validation
+                .validateCreate(req.copy(uploadLength = saved.some), maxSize)
+            )
             .getOrElse(CreationResult.Success(id, saved, None))
         yield res
 
@@ -65,11 +71,17 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
             state,
             req.checksum.map(_.algorithm),
             req.dataChunked(chunkSize, maxSize)
-          ).map(size =>
-            Validation
-              .validateReceive(state, req.copy(contentLength = size.some), maxSize)
+          ).map { case (size, hash) =>
+            req.checksum
+              .map(_.hash)
+              .filter(_ != hash)
+              .map(_ => ReceiveResult.ChecksumMismatch)
+              .orElse {
+                Validation
+                  .validateReceive(state, req.copy(contentLength = size.some), maxSize)
+              }
               .getOrElse(ReceiveResult.Success(size, None))
-          )
+          }
         }
         .mapF(OptionT.liftF)
       _ <- req.uploadLength
@@ -84,7 +96,7 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       state: UploadState,
       alg: Option[ChecksumAlgorithm],
       data: Stream[F, Chunk[Byte]]
-  ): DbTask[F, ByteSize] =
+  ): DbTask[F, (ByteSize, Hash)] =
     for
       lom <- DbTask.loManager[F]
       oid <- oidOpt.map(DbTask.pure).getOrElse {
@@ -93,15 +105,15 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
           .flatTap(oid => fileTable.updateOid(id, oid))
           .inTx
       }
-      size <- insertSafe(id, data, oid, lom, alg, state.offset)
-    yield size._1
+      res <- insertSafe(id, data, oid, lom, alg, state.offset)
+    yield res
 
   def insertFile(
       id: UploadId,
       data: Stream[F, Chunk[Byte]],
       maxSize: Option[ByteSize],
       alg: Option[ChecksumAlgorithm]
-  ): DbTask[F, ByteSize] =
+  ): DbTask[F, (ByteSize, Hash)] =
     for
       lom <- DbTask.loManager[F]
       oid <- DbTask
@@ -109,8 +121,8 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
         .flatTap(oid => fileTable.updateOid(id, oid))
         .inTx
 
-      size <- insertSafe(id, data, oid, lom, alg, ByteSize.zero)
-    yield size._1
+      res <- insertSafe(id, data, oid, lom, alg, ByteSize.zero)
+    yield res
 
   def insertSafe(
       id: UploadId,

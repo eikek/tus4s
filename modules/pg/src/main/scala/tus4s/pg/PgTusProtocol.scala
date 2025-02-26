@@ -24,7 +24,8 @@ class PgTusProtocol[F[_]: Sync](cfg: PgConfig[F]) extends TusProtocol[F]:
     extensions = Extension.createSet(
       Extension.Creation(CreationOptions.all) -> true,
       Extension.Termination -> true,
-      Extension.Concatenation -> cfg.enableConcat
+      Extension.Concatenation -> cfg.enableConcat,
+      Extension.Checksum(ChecksumAlgorithm.all) -> true
     ),
     maxSize = cfg.maxSize,
     rangeRequests = !cfg.enableConcat
