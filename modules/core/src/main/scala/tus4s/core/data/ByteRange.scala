@@ -17,6 +17,10 @@ enum ByteRange:
 
 object ByteRange:
   val all: ByteRange = All
+  val none: ByteRange.Chunk = ByteRange.Chunk(ByteSize.zero, ByteSize.zero)
+
+  def bytes(offset: Long, length: Long): ByteRange =
+    apply(ByteSize.bytes(offset), ByteSize.bytes(length))
 
   def apply(offset: ByteSize, length: ByteSize): ByteRange =
     Chunk(offset, length)

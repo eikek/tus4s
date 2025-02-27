@@ -11,7 +11,6 @@ final case class FileResult[F[_]](
     contentType: Option[String],
     fileName: Option[String]
 ):
-
   def getContentType: Option[String] =
     contentType
       .orElse(state.meta.getString(Key.contentType))

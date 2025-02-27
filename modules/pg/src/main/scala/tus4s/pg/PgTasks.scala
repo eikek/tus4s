@@ -171,18 +171,17 @@ private[pg] class PgTasks[F[_]: Sync](table: String):
       makeConn: ConnectionResource[F]
   ) =
     (for
-      (concatFile, r) <- fileTable
+      concatFile <- fileTable
         .findConcat(id)
         .mapF(OptionT.apply)
-        .mapF(_.subflatMap(_.applyRange(range)))
+      parts <- DbTask(_ => OptionT.fromOption[F](concatFile.applyRange(range)))
       data = Stream
         .resource(makeConn)
         .flatMap(conn =>
           Stream
-            .emits(concatFile.oids.toVector)
+            .emits(parts.toVector)
             .covary[F]
-            // TODO doesn't work! must calc ranges for all files! have to cut the length on each, obviously
-            .flatMap(oid => loadFile(oid, r, chunkSize).run(conn))
+            .flatMap { case (oid, r) => loadFile(oid, r, chunkSize).run(conn) }
         )
       res = FileResult(concatFile.state, data, true, None, None)
     yield res).mapF(_.value)

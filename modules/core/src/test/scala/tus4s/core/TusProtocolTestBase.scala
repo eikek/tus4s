@@ -61,45 +61,45 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
       "RangeRequests and Concatenation extension not enabled"
     )
     tusProtocol(None).use { tp =>
-      val data1 = b("hello ")
-      val data2 = b("world")
-      val req1 = UploadRequest.fromByteVector[IO](data1).withPartial(true)
-      val req2 = UploadRequest.fromByteVector[IO](data2).withPartial(true)
+      // hello world today.
+      val req1 = UploadRequest.fromByteVector[IO](b("hello ")).withPartial(true)
+      val req2 = UploadRequest.fromByteVector[IO](b("world ")).withPartial(true)
+      val req3 = UploadRequest.fromByteVector[IO](b("today.")).withPartial(true)
 
       for
-        cr1 <- tp.create(req1)
-        cr2 <- tp.create(req2)
-        id1 = cr1 match
-          case CreationResult.Success(id, _, _) => id
-          case _                                => fail("")
-        id2 = cr2 match
-          case CreationResult.Success(id, _, _) => id
-          case _                                => fail("")
+        id1 <- tp.createSuccess(req1).map(_.id)
+        id2 <- tp.createSuccess(req2).map(_.id)
+        id3 <- tp.createSuccess(req3).map(_.id)
 
         ccr = ConcatRequest(
-          NonEmptyList.of(id1, id2),
-          NonEmptyList.of(Url(s"/files/${id1}"), Url(s"/files/${id2}"))
+          NonEmptyList.of(id1, id2, id3),
+          NonEmptyList.of(
+            Url(s"/files/${id1}"),
+            Url(s"/files/${id2}"),
+            Url(s"/files/${id3}")
+          )
         )
         res <- tp.concat(ccr)
         id = res match
           case ConcatResult.Success(id) =>
             assertNotEquals(id, id1)
             assertNotEquals(id, id2)
+            assertNotEquals(id, id3)
             id
 
           case ConcatResult.PartsNotFound(ids) =>
             fail(s"Missing parts for concat: $ids")
 
-        fileResult <- tp
-          .find(id, ByteRange(ByteSize.bytes(8), ByteSize.bytes(2)))
-          .map(_.get)
-        content <- fileResult.data
-          .through(fs2.text.utf8.decode)
-          .compile
-          .string
-        _ = assertEquals(content, "rl")
-        _ = assert(fileResult.state.isDone)
-        _ = assert(fileResult.state.isFinal)
+        fr1 <- tp.find(id, ByteRange.bytes(8, 2)).map(_.get)
+        _ <- fr1.dataUtf8.assertEquals("rl")
+        _ = assert(fr1.state.isDone)
+        _ = assert(fr1.state.isFinal)
+
+        fr2 <- tp.find(id, ByteRange.bytes(8, 8)).map(_.get)
+        _ <- fr2.dataUtf8.assertEquals("rld toda")
+
+        fr3 <- tp.find(id, ByteRange.bytes(2, 12)).map(_.get)
+        _ <- fr3.dataUtf8.assertEquals("llo world to")
       yield ()
     }
 
@@ -317,3 +317,9 @@ abstract class TusProtocolTestBase extends CatsEffectSuite:
         case r: CreationResult.Success => r
         case r                         => fail(s"Unexpected creation result: $r")
       }
+
+  extension (self: FileResult[IO])
+    def dataUtf8: IO[String] = self.data.through(fs2.text.utf8.decode).compile.string
+
+    def checkText(expected: String) =
+      self.dataUtf8.assertEquals(expected)
