@@ -15,6 +15,7 @@
       pkgs = nixpkgs.legacyPackages.${system};
       ciPkgs = with pkgs; [
         devshell-tools.packages.${system}.sbt17
+        devshell-tools.packages.${system}.postgres-fg
         jdk17
       ];
       devshellPkgs =
@@ -23,7 +24,6 @@
           jq
           scala-cli
           tusc-sh
-          devshell-tools.packages.${system}.postgres-fg
           postgresql
           bloop
           metals
