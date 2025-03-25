@@ -11,7 +11,7 @@ object Dependencies {
     val scribe = "3.16.0"
     val cats = "2.12.0"
     val catsEffect = "3.6.0"
-    val fs2 = "3.11.0"
+    val fs2 = "3.12.0"
     val scodecBits = "1.2.0"
     val catsParse = "1.1.0"
     val postgres = "42.7.5"
