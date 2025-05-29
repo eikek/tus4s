@@ -3,7 +3,7 @@ import sbt._
 object Dependencies {
 
   object V {
-    val scala3 = "3.3.5"
+    val scala3 = "3.3.6"
     val http4s = "0.23.30"
     val munit = "1.1.1"
     val munitScalaCheck = "1.1.0"
@@ -15,7 +15,7 @@ object Dependencies {
     val scodecBits = "1.2.0"
     val catsParse = "1.1.0"
     val postgres = "42.7.6"
-    val ulid = "2025.1.10"
+    val ulid = "2025.1.11"
   }
 
   val postgres = Seq(

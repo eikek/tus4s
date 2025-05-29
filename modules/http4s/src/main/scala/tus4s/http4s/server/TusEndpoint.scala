@@ -5,8 +5,6 @@ import cats.syntax.all.*
 
 import org.http4s.*
 import org.http4s.headers.*
-import org.http4s.headers.Location
-import org.http4s.headers.`Cache-Control`
 import org.http4s.implicits.*
 import tus4s.core.data.*
 import tus4s.core.{TusConfig, TusProtocol}
