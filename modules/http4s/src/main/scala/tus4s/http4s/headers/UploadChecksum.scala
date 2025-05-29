@@ -1,7 +1,6 @@
 package tus4s.http4s.headers
 
 import org.http4s.*
-import org.http4s.Header
 import org.typelevel.ci.CIString
 import scodec.bits.ByteVector
 import tus4s.core.data.*
