@@ -15,7 +15,7 @@ object Dependencies {
     val scodecBits = "1.2.0"
     val catsParse = "1.1.0"
     val postgres = "42.7.8"
-    val ulid = "2025.1.18"
+    val ulid = "2025.1.19"
   }
 
   val postgres = Seq(
